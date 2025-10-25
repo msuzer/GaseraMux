@@ -14,7 +14,7 @@ class AsyncTimerBank:
         if name in self._timers:
             del self._timers[name]
 
-    def expired(self, name: str) -> bool:
+    def is_expired(self, name: str) -> bool:
         return name in self._timers and time.monotonic() >= self._timers[name]
 
     def is_active(self, name: str) -> bool:

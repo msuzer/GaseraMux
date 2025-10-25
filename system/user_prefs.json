@@ -32,7 +32,7 @@
     true,
     true
   ],
-  "measurement_duration": 300,
+  "measurement_duration": 30,
   "pause_seconds": 5,
   "repeat_count": 1,
   "chart_update_interval": 3,
