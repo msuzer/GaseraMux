@@ -1,0 +1,257 @@
+<div class="container-fluid p-2">
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-10">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Live Measurements</span>
+          <div class="d-flex align-items-center gap-3">
+            <div class="input-group input-group-sm" style="width: 160px;">
+              <input type="number" min="1" max="60" step="1" id="chartInterval" class="form-control form-control-sm" title="secs within [1, 60]" />
+              <button class="btn btn-outline-primary btn-sm" title="Set Chart Update Interval (sec)" onclick="applyChartInterval()">Set Interval</button>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" title="Save Chart Screenshot" onclick="downloadImage()">Save Image</button>
+            <button class="btn btn-sm btn-outline-success" title="Save Chart Data in CSV Format" onclick="downloadCSV()">Save CSV</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <canvas id="liveChart" height="160"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row justify-content-center mb-3">
+    <div class="col-md-10">
+      <div class="card card-body" id="trackTogglePanel">
+        <h6 class="mb-3">Toggle Gas Components</h6>
+        <div id="trackToggles" class="d-flex flex-wrap gap-3"></div>
+        <div id="liveNotice" class="small text-muted mt-2" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---- Config / state ----
+  const MAX_POINTS = 200;               // data cap per series
+  let trackVisibility = {};             // merged with backend prefs
+  let lastStamp = null;                 // last device timestamp we plotted (seconds)
+  let updateTimer = null;               // polling timer handle
+
+  // Use API_PATHS when present, otherwise fall back to sane defaults
+  const PATHS = {
+    readPrefs:  (window.API_PATHS?.settings?.read)  || '/prefs',
+    writePrefs: (window.API_PATHS?.settings?.update)|| '/prefs',
+    liveData:   (window.API_PATHS?.data?.live)      || '/gasera/api/data/live'
+  };
+
+  // ---- Chart init ----
+  const ctx = document.getElementById('liveChart').getContext('2d');
+  const liveChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'nearest', intersect: false },
+      scales: {
+        x: { title: { display: true, text: 'Time' } },
+        y: { title: { display: true, text: 'PPM' }, beginAtZero: true }
+      },
+      plugins: {
+        zoom: {
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+          pan:  { enabled: true, mode: 'x' }
+        },
+        legend: {
+          onClick: function (e, legendItem, legend) {
+            const index = legendItem.datasetIndex;
+            const chart = legend.chart;
+            const label = chart.data.datasets[index].label;
+
+            // Toggle visibility via legend
+            const meta = chart.getDatasetMeta(index);
+            meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+            chart.update();
+
+            trackVisibility[label] = chart.isDatasetVisible(index);
+
+            // Update matching checkbox if rendered
+            const checkbox = document.getElementById(`track-toggle-${index}`);
+            if (checkbox) checkbox.checked = trackVisibility[label];
+
+            // Persist visibility
+            persistPrefs({ track_visibility: trackVisibility });
+          }
+        }
+      }
+    }
+  });
+  window.liveChart = liveChart;
+
+  // ---- Helpers ----
+  function randomColor(){ const r=()=>Math.floor(100+Math.random()*155); return `rgb(${r()},${r()},${r()})`; }
+
+  function ensureDataset(label, color){
+    let ds = liveChart.data.datasets.find(d => d.label === label);
+    if (!ds) {
+      ds = {
+        label,
+        data: new Array(liveChart.data.labels.length).fill(null),
+        borderColor: color || randomColor(),
+        backgroundColor: color || undefined,
+        borderWidth: 1,
+        tension: 0.25,
+        hidden: trackVisibility[label] === false
+      };
+      liveChart.data.datasets.push(ds);
+    }
+    return ds;
+  }
+
+  function renderTrackToggles(){
+    const container = document.getElementById('trackToggles');
+    if (!container) return;
+    container.innerHTML = '';
+
+    liveChart.data.datasets.forEach((ds, i) => {
+      const id = `track-toggle-${i}`;
+      const visible = !ds.hidden;
+
+      const div = document.createElement('div');
+      div.classList.add('form-check','form-switch');
+      div.innerHTML = `
+        <input class="form-check-input" type="checkbox" role="switch" id="${id}" ${visible?'checked':''}>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="width:12px;height:12px;background:${ds.borderColor};display:inline-block;border-radius:2px;"></span>
+          <label class="form-check-label" for="${id}" style="color:${ds.borderColor};margin:0;">${ds.label}</label>
+        </div>`;
+
+      div.querySelector('input').addEventListener('change', (e) => {
+        const on = e.target.checked;
+        liveChart.data.datasets[i].hidden = !on;
+        trackVisibility[ds.label] = on;
+        liveChart.update();
+        persistPrefs({ track_visibility: trackVisibility });
+      });
+
+      container.appendChild(div);
+    });
+  }
+
+  function setChartUpdateInterval(seconds){
+    if (updateTimer) clearInterval(updateTimer);
+    updateTimer = setInterval(fetchData, Math.max(1, Number(seconds)||5) * 1000);
+  }
+
+  function applyChartInterval(){
+    const value = parseInt(document.getElementById('chartInterval').value);
+    if (isNaN(value) || value < 1 || value > 60) { alert('Please enter a value between 1 and 60 sec.'); return; }
+    persistPrefs({ chart_update_interval: value }, () => {
+      setChartUpdateInterval(value);
+      alert('Chart interval updated.');
+    });
+  }
+
+  function persistPrefs(payload, onOk){
+    (window.safeFetch||fetch)(PATHS.writePrefs, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(r=>r.ok?r.json():Promise.reject(r.statusText))
+      .then(j=>{ if (j && j.ok && typeof onOk === 'function') onOk(); })
+      .catch(()=>{});
+  }
+
+  // ---- Data pipeline ----
+  function fetchData(){
+    (window.safeFetch||fetch)(PATHS.liveData)
+      .then(r=>r.ok?r.json():Promise.reject(r.statusText))
+      .then(data => {
+        // Handle non-data message
+        const notice = document.getElementById('liveNotice');
+        if (!data || data.message) {
+          if (notice) notice.textContent = data && data.message ? data.message : 'No data';
+          return;
+        } else if (notice) {
+          notice.textContent = '';
+        }
+
+        const ts = data.timestamp;                  // seconds (per backend)
+        if (typeof ts !== 'number') return;         // safety guard
+        const isDuplicate = (lastStamp !== null && ts === lastStamp);
+
+        if (!isDuplicate) {
+          const label = new Date(ts*1000).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+          liveChart.data.labels.push(label);
+          if (liveChart.data.labels.length > MAX_POINTS) liveChart.data.labels.shift();
+          // extend existing datasets for new label with nulls
+          liveChart.data.datasets.forEach(ds => {
+            ds.data.push(null);
+            if (ds.data.length > MAX_POINTS) ds.data.shift();
+          });
+        }
+
+        // Upsert components
+        let added = false;
+        (data.components||[]).forEach(c => {
+          const ds = ensureDataset(c.label, c.color);
+          const idx = liveChart.data.labels.length - 1; // current slot
+          ds.data[idx] = c.ppm;
+        });
+
+        // Auto-merge new compounds to trackVisibility (default visible)
+        let modified = false;
+        (data.components||[]).forEach(c => {
+          if (!(c.label in trackVisibility)) { trackVisibility[c.label] = true; modified = true; }
+        });
+        if (modified) persistPrefs({ track_visibility: trackVisibility });
+
+        if (added) renderTrackToggles();
+        liveChart.update();
+        lastStamp = ts;
+      })
+      .catch(err => console.warn('[RESULTS] fetch failed:', err));
+  }
+
+  // ---- Export helpers ----
+  window.downloadImage = function(){
+    const link = document.createElement('a');
+    link.href = liveChart.toBase64Image();
+    const ts = new Date().toISOString().replace(/[:T-]/g,'_').split('.')[0];
+    link.download = `gasera_chart_${ts}.png`;
+    link.click();
+  }
+
+  window.downloadCSV = function(){
+    if (liveChart.data.datasets.length === 0) return;
+    let csv = 'Time,' + liveChart.data.datasets.map(d=>d.label).join(',') + '\n';
+    for (let i=0; i<liveChart.data.labels.length; i++){
+      const row = [liveChart.data.labels[i]];
+      liveChart.data.datasets.forEach(ds => row.push(ds.data[i] ?? ''));
+      csv += row.join(',') + '\n';
+    }
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const ts = new Date().toISOString().replace(/[:T-]/g,'_').split('.')[0];
+    link.download = `gasera_data_${ts}.csv`;
+    link.click();
+  }
+
+  // ---- Bootstrap on load ----
+  (window.safeFetch||fetch)(PATHS.readPrefs)
+    .then(r=>r.ok?r.json():Promise.reject(r.statusText))
+    .then(p => {
+      const interval = p.chart_update_interval || 5;
+      document.getElementById('chartInterval').value = interval;
+      setChartUpdateInterval(interval);
+      trackVisibility = p.track_visibility || {};
+      fetchData();                    // immediate first tick
+      setTimeout(renderTrackToggles, 800); // render toggles after initial dataset merge
+    })
+    .catch(()=>{ document.getElementById('chartInterval').value = 5; setChartUpdateInterval(5); fetchData(); });
+})();
+</script>

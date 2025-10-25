@@ -1,0 +1,21 @@
+[Unit]
+Description=Gasera Flask API
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/GaseraMux
+ExecStart=/usr/bin/python3 run.py
+Restart=on-failure
+
+# Security and file perms:
+UMask=0027              # new files default to 640/750 instead of 644/755
+NoNewPrivileges=true    # prevent privilege escalation
+PrivateTmp=true         # give service its own /tmp
+ProtectSystem=full      # mount system dirs read-only
+ProtectHome=true        # hide /home from service
+ReadWritePaths=/opt/GaseraMux/config   # only allow writes here
+
+[Install]
+WantedBy=multi-user.target

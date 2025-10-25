@@ -1,0 +1,238 @@
+<div class="container-fluid p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Control Panel</h4>
+    <span id="phaseBadge" class="badge bg-light text-dark border">IDLE</span>
+  </div>
+
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <form id="configForm" class="row gy-2 gx-3 align-items-center">
+        <div class="col-sm-3">
+          <label class="form-label mb-0 small">Measurement (sec)</label>
+          <input id="cfgMeasure" type="number" class="form-control form-control-sm" value="300" min="1">
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label mb-0 small">Pause (sec)</label>
+          <input id="cfgPause" type="number" class="form-control form-control-sm" value="5" min="0">
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label mb-0 small">Repeat Count</label>
+          <input id="cfgRepeat" type="number" class="form-control form-control-sm" value="1" min="1">
+        </div>
+        <div class="col-sm-3 form-check form-switch mt-4 pt-1">
+          <input id="cfgBuzzer" class="form-check-input" type="checkbox" checked>
+          <label class="form-check-label small">Enable Buzzer</label>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="text-center mb-4">
+    <button id="btnStart" class="btn btn-success btn-lg px-5 me-2">Start Measurement</button>
+    <button id="btnAbort" class="btn btn-danger btn-lg px-5" disabled>Abort</button>
+    <div class="progress mt-3" style="height: 10px;">
+      <div id="runProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="card mb-3 shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Channel Selection</span>
+      <div class="btn-group btn-group-sm">
+        <button id="btnAll" class="btn btn-outline-secondary" type="button">Select All</button>
+        <button id="btnNone" class="btn btn-outline-secondary" type="button">Deselect All</button>
+        <button id="btnInvert" class="btn btn-outline-secondary" type="button">Invert</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div id="channelGrid" class="d-flex flex-wrap gap-2 justify-content-start"></div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header">Status &amp; Log</div>
+    <div class="card-body">
+      <div class="small mb-2">
+        <strong>Channel:</strong> <span id="currChannel">–</span> |
+        <strong>Repeat:</strong> <span id="currRepeat">–</span> |
+        <strong>Phase:</strong> <span id="currPhase">IDLE</span>
+      </div>
+      <div class="progress mb-2" style="height: 6px;">
+        <div id="statusProgress" class="progress-bar" style="width:0%"></div>
+      </div>
+      <div id="logBox" class="bg-light border rounded p-2 small" style="height:200px; overflow-y:auto; white-space:pre-wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Abort modal -->
+<div class="modal fade" id="abortConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning-subtle">
+        <h5 class="modal-title">Confirm Abort</h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">Abort current measurement? This will immediately stop Gasera operation.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="confirmAbort" type="button" class="btn btn-danger">Yes, Abort</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const TOTAL_CHANNELS = 31;
+  const START_DELAY = 5; // seconds
+  let countdownTimer = null;
+  let countdown = START_DELAY;
+  let evtSrc = null;
+
+  const btnStart = document.getElementById("btnStart");
+  const btnAbort = document.getElementById("btnAbort");
+  const runProgress = document.getElementById("runProgress");
+  const phaseBadge = document.getElementById("phaseBadge");
+  const logBox = document.getElementById("logBox");
+
+  function appendLog(msg){
+    if (!msg) return;
+    logBox.textContent += msg + "\n";
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  // Build channel grid
+  const grid = document.getElementById("channelGrid");
+  for (let i=0; i<TOTAL_CHANNELS; i++){
+    const div = document.createElement("div");
+    div.className = "form-check form-check-inline";
+    div.innerHTML = `<input class="form-check-input chbox" type="checkbox" id="ch${i}" data-idx="${i}" checked>
+                     <label class="form-check-label small" for="ch${i}">${i+1}</label>`;
+    grid.appendChild(div);
+  }
+
+  // Channel buttons
+  document.getElementById("btnAll").onclick = ()=> document.querySelectorAll('.chbox').forEach(c=> c.checked = true);
+  document.getElementById("btnNone").onclick = ()=> document.querySelectorAll('.chbox').forEach(c=> c.checked = false);
+  document.getElementById("btnInvert").onclick = ()=> document.querySelectorAll('.chbox').forEach(c=> c.checked = !c.checked);
+
+  // Load preferences
+  function loadPreferences(){
+    safeFetch(API_PATHS.settings.read).then(r=>r.json()).then(p=>{
+      document.getElementById('cfgMeasure').value = p.measurement_duration ?? 300;
+      document.getElementById('cfgPause').value   = p.pause_seconds ?? 5;
+      document.getElementById('cfgRepeat').value  = p.repeat_count ?? 1;
+      document.getElementById('cfgBuzzer').checked= p.buzzer ?? true;
+
+      const mask = p.include_channels ?? [];
+      document.querySelectorAll('.chbox').forEach((b,i)=>{ if (i<mask.length) b.checked = mask[i]; });
+
+      window.chartUpdateInterval = p.chart_update_interval ?? 5;
+      window.trackVisibility = p.track_visibility ?? {};
+      appendLog('[UI] Preferences loaded');
+    }).catch(e=> appendLog('[UI] Pref load failed: ' + e));
+  }
+
+  window.addEventListener("beforeunload", () => {
+    const body = {
+      measurement_duration: Number(document.getElementById("cfgMeasure").value),
+      pause_seconds: Number(document.getElementById("cfgPause").value),
+      repeat_count: Number(document.getElementById("cfgRepeat").value),
+      include_channels: Array.from(document.querySelectorAll(".chbox")).map(c => c.checked)
+    };
+    navigator.sendBeacon(API_PATHS.settings.update, JSON.stringify(body)); // lightweight save
+  });
+
+  // Start countdown logic
+  btnStart.addEventListener('click', ()=>{
+    // cancel if already counting
+    if (countdownTimer){
+      clearInterval(countdownTimer); countdownTimer=null; countdown=START_DELAY;
+      btnStart.textContent='Start Measurement';
+      btnStart.classList.remove('btn-warning');
+      btnStart.classList.add('btn-success');
+      return;
+    }
+    countdown=START_DELAY;
+    btnStart.classList.remove('btn-success');
+    btnStart.classList.add('btn-warning');
+    btnStart.textContent = `Starting in ${countdown}… (Cancel)`;
+    countdownTimer = setInterval(()=>{
+      countdown--;
+      btnStart.textContent = countdown>0 ? `Starting in ${countdown}… (Cancel)` : 'Starting…';
+      if (countdown<=0){
+        clearInterval(countdownTimer); countdownTimer=null;
+        startMeasurement();
+      }
+    },1000);
+  });
+
+  function startMeasurement(){
+    const include = Array.from(document.querySelectorAll('.chbox')).map(c=> c.checked);
+    const body = {
+      measurement_duration: Number(document.getElementById('cfgMeasure').value),
+      pause_seconds: Number(document.getElementById('cfgPause').value),
+      repeat_count: Number(document.getElementById('cfgRepeat').value),
+      include_channels: include
+    };
+    safeFetch(API_PATHS.measurement.start, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+      .then(r=>r.json())
+      .then(j=>{ appendLog(j.message || 'Started'); if (j.ok){ btnStart.disabled=true; btnAbort.disabled=false; phaseBadge.className='badge bg-info'; phaseBadge.textContent='Starting'; } })
+      .catch(e=> appendLog('Start failed: ' + e));
+  }
+
+  // Abort confirm
+  const abortModal = new bootstrap.Modal(document.getElementById('abortConfirmModal'));
+  btnAbort.addEventListener('click', ()=> abortModal.show());
+  document.getElementById('confirmAbort').addEventListener('click', ()=>{
+    abortModal.hide();
+    safeFetch(API_PATHS.measurement.abort,{method:'POST'})
+      .then(r=>r.json())
+      .then(j=>{
+        appendLog(j.message || 'Abort');
+        if (j.ok){ btnAbort.disabled=true; btnStart.disabled=false; phaseBadge.className='badge bg-warning text-dark'; phaseBadge.textContent='Aborting'; }
+      })
+      .catch(e=> appendLog('Abort failed: ' + e));
+  });
+
+  // SSE
+  function openSSE(){
+    if (evtSrc) try{ evtSrc.close(); }catch(e){}
+    evtSrc = new EventSource(API_PATHS.measurement.events);
+    evtSrc.onmessage = (e)=>{
+      try{
+        const d = JSON.parse(e.data);
+        document.getElementById('currChannel').textContent = (d.virtual_channel ?? d.vch ?? 0) + 1;
+        document.getElementById('currRepeat').textContent  = (d.repeat_index ?? d.repeat ?? 0) + 1;
+        document.getElementById('currPhase').textContent   = d.phase;
+        phaseBadge.textContent = d.phase;
+        switch(d.phase){
+          case 'MEASURING': phaseBadge.className='badge bg-success'; break;
+          case 'PAUSED':    phaseBadge.className='badge bg-secondary'; break;
+          case 'ADVANCING': phaseBadge.className='badge bg-light text-dark'; break;
+          case 'COMPLETED': phaseBadge.className='badge bg-primary'; btnStart.disabled=false; btnAbort.disabled=true; break;
+          case 'ABORTED':   phaseBadge.className='badge bg-danger'; btnStart.disabled=false; btnAbort.disabled=true; break;
+          default:          phaseBadge.className='badge bg-light text-dark';
+        }
+        const total = TOTAL_CHANNELS-1;
+        const v = Number(d.virtual_channel ?? d.vch ?? 0);
+        const pct = Math.max(0, Math.min(100, Math.round((v/total)*100)));
+        runProgress.style.width = pct + '%';
+        document.getElementById('statusProgress').style.width = pct + '%';
+      }catch(err){ appendLog('SSE parse error: ' + err); }
+    };
+    evtSrc.onerror = ()=>{
+      appendLog('[SSE] Connection lost, retrying in 5s…');
+      try{ evtSrc.close(); }catch(e){}
+      setTimeout(openSSE, 5000);
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    loadPreferences();
+    openSSE();
+  });
+})();
+</script>

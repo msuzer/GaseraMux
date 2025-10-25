@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gasera Pneumatic Multiplexer Controller</title>
+
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+  <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/chartjs-plugin-zoom.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/api_routes.js') }}"></script>
+
+  <style>
+    .status-idle { background-color: #d1e7dd; }
+    .status-measuring { background-color: #fff3cd; }
+    .status-aborted { background-color: #f8d7da; }
+    .hover-shadow:hover { box-shadow: 0 0 10px rgba(0,0,0,0.2); transition: box-shadow 0.2s ease; }
+    #logBox { height: 250px; overflow-y: auto; white-space: pre-wrap; background: #f8f9fa; border: 1px solid #ccc; padding: 10px; }
+    canvas#liveChart { width: 100% !important; height: auto !important; }
+    .command-input .input-group > input { min-width: 100px; max-width: 200px; }
+    .command-input .input-group > button { min-width: 150px; max-width: 150px; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+
+<body class="container-fluid py-3">
+  <div class="row justify-content-center mb-4">
+    <div class="col-12 col-lg-8">
+      <div class="d-flex align-items-center justify-content-between px-3 px-md-4">
+        <h2 class="m-0">Gasera Multiplexer Controller</h2>
+        <span id="connBadge" class="badge rounded-pill bg-secondary ms-3 text-nowrap">Checking…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+          <ul class="nav nav-tabs justify-content-center mb-3" id="uiTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab">Home</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab">Results</button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="uiTabsContent">
+            <div class="tab-pane fade show active" id="home" role="tabpanel">
+              {% include "partials/home_tab.html" %}
+            </div>
+            <div class="tab-pane fade" id="results" role="tabpanel">
+              {% include "partials/results_tab.html" %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Centralized safe fetch with limited retries
+    let _fetchErrors = 0;
+    let _fetchDisabled = false;
+    const _MAX_FETCH_ERRORS = 3;
+
+    function safeFetch(url, options={}) {
+      if (_fetchDisabled) return Promise.reject(new Error("fetch disabled"));
+      return fetch(url, options).then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        _fetchErrors = 0;
+        return r;
+      }).catch(err => {
+        _fetchErrors++;
+        if (_fetchErrors >= _MAX_FETCH_ERRORS) {
+          _fetchDisabled = true;
+          console.error("Fetch disabled after repeated errors:", err);
+        }
+        showFetchErrorOnce();
+        throw err;
+      });
+    }
+
+    function showFetchErrorOnce() {
+      if (document.getElementById("fetch-error-box")) return;
+      const box = document.createElement("div");
+      box.id = "fetch-error-box";
+      box.className = "alert alert-danger text-center";
+      box.textContent = "Lost connection to server. Please refresh the page.";
+      document.body.prepend(box);
+    }
+
+    function updateConnBadge(online) {
+      const b = document.getElementById('connBadge');
+      if (!b) return;
+      if (online) {
+        b.textContent = 'Gasera Online';
+        b.className = 'badge rounded-pill bg-success';
+      } else {
+        b.textContent = 'Gasera Offline';
+        b.className = 'badge rounded-pill bg-danger';
+      }
+    }
+
+    function pollConnectionStatus() {
+      const url = (window.API_PATHS?.connection?.status) || '/gasera/api/connection_status';
+      safeFetch(url)
+        .then(r => r.json())
+        .then(s => updateConnBadge(!!(s && s.online)))
+        .catch(() => updateConnBadge(false));
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const resultsTab = document.querySelector('#results-tab');
+      resultsTab?.addEventListener('shown.bs.tab', () => { try { window.liveChart?.resize?.(); } catch(e){} });
+
+      pollConnectionStatus();
+      setInterval(pollConnectionStatus, 2000);
+    });
+  </script>
+</body>
+</html>

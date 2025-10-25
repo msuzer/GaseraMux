@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*.tmp
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Virtual environments
+venv/
+.env/
+env/
+.venv/
+
+# Logs and coverage
+*.log
+*.coverage
+coverage/
+htmlcov/
+*.cover
+
+# PyInstaller
+dist/
+build/
+*.spec
+
+# Flask cache
+instance/
+*.db
+
+# VSCode settings (optional)
+.vscode/
+
+# Test artifacts
+*.pytest_cache/
+.cache/
+.tox/
