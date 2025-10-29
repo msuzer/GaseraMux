@@ -2,15 +2,15 @@ import threading
 import time
 import socket
 import subprocess
-import requests
+from datetime import datetime
+import time
 
 import platform
 IS_LINUX = platform.system() == "Linux"
 
 if  IS_LINUX:
+    import requests
     from PIL import Image, ImageDraw
-    from luma.core.interface.serial import i2c
-    from luma.oled.device import sh1106
 
     # ---------- Helpers ----------
 
@@ -41,49 +41,69 @@ if  IS_LINUX:
 
     # ---------- OLED Updater ----------
 
-    serial = i2c(port=3, address=0x3C)
-    device = sh1106(serial, width=128, height=64)
-    device.cleanup = lambda : None  # keep content when script exits
+    OLED_AVAILABLE = False
+    device = None
+
+    try:
+        from luma.core.interface.serial import i2c
+        from luma.oled.device import sh1106, ssd1306
+
+        try:
+            serial = i2c(port=3, address=0x3C)
+            try:
+                device = sh1106(serial)
+            except Exception:
+                device = ssd1306(serial)
+            device.cleanup = lambda : None  # keep content when script exits
+            OLED_AVAILABLE = True
+            print("✅ OLED display initialized.")
+        except Exception as e:
+            print(f"⚠️ OLED not found or I2C init failed: {e}")
+    except ImportError:
+        print("⚠️ OLED libraries missing (luma). Running headless mode.")
+
 
     def oled_updater():
-        # Create an in-memory framebuffer we can update line by line
+        if not OLED_AVAILABLE:
+            print("OLED not available, skipping display updates.")
+            return
+
         img = Image.new("1", (device.width, device.height))
         draw = ImageDraw.Draw(img)
 
-        prev_ssid = prev_ip = prev_status = None
+        prev_time = None
+        last_static_update = 0
 
         while True:
+            now = time.time()
             ssid = get_wifi_ssid()
             ip = get_ip_address("wlan0")
             gasera_status = get_gasera_status()
+            current_time = datetime.now().strftime("%d.%m.%Y %H:%M")  # 24h, no seconds
 
             updated = False
 
-            # Line 0: WiFi SSID
-            if ssid != prev_ssid:
-                draw.rectangle((0, 0, device.width, 15), fill=0)  # clear old line
-                draw.text((0, 0), f"WiFi: {ssid}", fill=255)
-                prev_ssid = ssid
-                updated = True
-
-            # Line 1: IP address
-            if ip != prev_ip:
-                draw.rectangle((0, 16, device.width, 31), fill=0)
-                draw.text((0, 16), f"IP: {ip}", fill=255)
-                prev_ip = ip
-                updated = True
-
-            # Line 2: Gasera status
-            if gasera_status != prev_status:
-                draw.rectangle((0, 32, device.width, 47), fill=0)
+            # Refresh static info every 5 s or if changed
+            if now - last_static_update >= 5:
+                draw.rectangle((0, 0, device.width, 47), fill=0)
+                draw.text((0, 0),  f"WiFi: {ssid}",        fill=255)
+                draw.text((0, 16), f"IP: {ip}",            fill=255)
                 draw.text((0, 32), f"Gasera: {gasera_status}", fill=255)
-                prev_status = gasera_status
+                last_static_update = now
+                updated = True
+
+            # Refresh clock line every minute
+            if current_time != prev_time:
+                draw.rectangle((0, 48, device.width, 63), fill=0)
+                draw.text((0, 48), current_time, fill=255)
+                prev_time = current_time
                 updated = True
 
             if updated:
                 device.display(img)
 
-            time.sleep(5)  # check every 5s
+            # Sleep slightly under a minute to stay in sync
+            time.sleep(55)
 
     def start_oled_thread():
         t = threading.Thread(target=oled_updater, daemon=True)

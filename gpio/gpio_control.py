@@ -77,3 +77,17 @@ else:
 
 # Global instance
 gpio = GPIOController()
+
+"""
+Initialize GPIOs with defined startup directions and levels.
+"""
+
+from gpio.pin_assignments import BUZZER_PIN, TRIGGER_PIN, OC1_PIN, OC2_PIN, OC3_PIN, OC4_PIN, OC5_PIN
+
+# Input pins initialized
+gpio.read(TRIGGER_PIN)
+
+# Output pins initialized LOW
+output_pins = [BUZZER_PIN, OC1_PIN, OC2_PIN, OC3_PIN, OC4_PIN, OC5_PIN]
+for pin in output_pins:
+    gpio.reset(pin)

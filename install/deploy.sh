@@ -25,11 +25,29 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-echo "[1/10] Update & install packages..."
+echo "[1a/10] Update & install packages..."
 apt update
 apt install -y isc-dhcp-server nginx python3 gpiod python3-pip python3-flask python3-waitress \
                python3-netifaces python3-libgpiod python3-psutil python3-luma.oled python3-requests \
                git network-manager hostapd dnsmasq curl net-tools socat dos2unix
+
+echo "[1b/10] Setting system timezone to Europe/Istanbul..."
+
+# Set timezone permanently
+if timedatectl set-timezone Europe/Istanbul 2>/dev/null; then
+  echo "✅ Timezone set to Europe/Istanbul"
+else
+  echo "⚠️ timedatectl not available, falling back to manual symlink"
+  sudo ln -sf /usr/share/zoneinfo/Europe/Istanbul /etc/localtime
+  echo "Europe/Istanbul" | sudo tee /etc/timezone >/dev/null
+  echo "✅ Timezone linked manually"
+fi
+
+# Sync system time (if NTP active)
+if timedatectl | grep -q "NTP service"; then
+  sudo timedatectl set-ntp true
+  echo "⏰ NTP synchronization ensured"
+fi
 
 echo "[2/10] Avoid DHCP conflicts: disable dnsmasq..."
 systemctl disable --now dnsmasq 2>/dev/null || true

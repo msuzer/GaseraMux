@@ -29,7 +29,7 @@ class Preferences:
 
     DEFAULT_INCLUDE_COUNT = 31  # default number of channels to include
 
-    def __init__(self, filename: str = "user_prefs.json"):
+    def __init__(self, filename: str = "config/user_prefs.json"):
         # Store prefs under system/ folder for consistency
         self.file = Path(__file__).resolve().parent / filename
         self.data: Dict[str, Any] = {}
