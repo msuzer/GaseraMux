@@ -98,18 +98,30 @@ def sse_events():
     """Server-Sent Events stream of phase/channel updates."""
     def event_stream():
         last_phase = None
+        last_beat = time.monotonic()
         try:
             while True:
                 if not engine.is_running() and not latest_progress:
+                    # still send a heartbeat every 10 s
+                    if time.monotonic() - last_beat > 10:
+                        yield ": keep-alive\n\n"   # SSE-spec comment line
+                        last_beat = time.monotonic()
                     time.sleep(0.5)
                     continue
 
                 state = latest_progress.copy() if latest_progress else engine.get_progress()
                 phase = state.get("phase")
+
                 if phase != last_phase:
                     payload = json.dumps(state)
                     yield f"data: {payload}\n\n"
                     last_phase = phase
+                    last_beat = time.monotonic()
+                elif time.monotonic() - last_beat > 10:
+                    # no change for >10 s → send heartbeat
+                    yield ": keep-alive\n\n"
+                    last_beat = time.monotonic()
+
                 time.sleep(0.5)
         except GeneratorExit:
             info("[SSE] client disconnected")

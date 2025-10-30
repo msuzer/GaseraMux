@@ -21,5 +21,26 @@ start_oled_thread()
 def index():
     return render_template('index.html')
 
+def cleanup():
+    """Clean up resources before exit."""
+    from gpio.gpio_control import gpio
+    log.info("Cleaning up resources...")
+    # gpio.cleanup()
+    log.info("Cleanup complete")
+
+def signal_handler(signum, frame):
+    """Handle termination signals."""
+    log.info(f"Received signal {signum}")
+    cleanup()
+    exit(0)
+
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5001, debug = True)
+    import signal
+    import atexit
+    
+    # Register cleanup handlers
+    atexit.register(cleanup)
+    # signal.signal(signal.SIGTERM, signal_handler)
+    # signal.signal(signal.SIGINT, signal_handler)
+    
+    app.run(host='127.0.0.1', port=5001, debug=True)

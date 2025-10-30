@@ -1,6 +1,6 @@
 import time
 import threading
-from system.log_utils import info, warn, debug
+from system.log_utils import info, warn, debug, error
 from gpio.gpio_control import gpio
 from gpio.pin_assignments import TRIGGER_PIN
 
@@ -17,9 +17,9 @@ class TriggerMonitor:
       • Thread-safe, non-blocking, fully background operation
     """
 
-    DEBOUNCE_MS = 100           # Debounce window for stable transitions
-    POLL_MS = 25                # Sampling interval
-    LONG_PRESS_SEC = 2.5        # Long-press threshold
+    DEBOUNCE_MS = 750           # Debounce window for stable transitions
+    POLL_MS = 250                # Sampling interval
+    LONG_PRESS_SEC = 4.0        # Long-press threshold
     COOLDOWN_SEC = 2.0          # Ignore further presses for this period after action
 
     def __init__(self, engine):
@@ -57,7 +57,11 @@ class TriggerMonitor:
         """Main polling and debounce loop."""
         while not self._stop_event.is_set():
             now = time.time()
-            raw = gpio.read(TRIGGER_PIN)
+
+            try:
+                raw = gpio.read(TRIGGER_PIN)
+            except OSError as e:
+                warn(f"[TRIGGER] GPIO busy error: {str(e)}")
 
             # Debounce detection
             if raw != self._stable_state:

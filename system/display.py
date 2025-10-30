@@ -33,7 +33,7 @@ if  IS_LINUX:
 
     def get_gasera_status():
         try:
-            r = requests.get("http://127.0.0.1:5001/api/connection_status", timeout=2)
+            r = requests.get("http://127.0.0.1:5001/gasera/api/connection_status", timeout=2)
             data = r.json()
             return "Online" if data.get("online") else "Offline"
         except Exception:

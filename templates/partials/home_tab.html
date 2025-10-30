@@ -120,7 +120,7 @@
 
   // Load preferences
   function loadPreferences(){
-    safeFetch(API_PATHS.settings.read).then(r=>r.json()).then(p=>{
+    safeFetch(API_PATHS?.settings?.read).then(r=>r.json()).then(p=>{
       document.getElementById('cfgMeasure').value = p.measurement_duration ?? 300;
       document.getElementById('cfgPause').value   = p.pause_seconds ?? 5;
       document.getElementById('cfgRepeat').value  = p.repeat_count ?? 1;
@@ -142,7 +142,7 @@
       repeat_count: Number(document.getElementById("cfgRepeat").value),
       include_channels: Array.from(document.querySelectorAll(".chbox")).map(c => c.checked)
     };
-    navigator.sendBeacon(API_PATHS.settings.update, JSON.stringify(body)); // lightweight save
+    navigator.sendBeacon(API_PATHS?.settings?.update, JSON.stringify(body)); // lightweight save
   });
 
   // Start countdown logic
@@ -177,7 +177,7 @@
       repeat_count: Number(document.getElementById('cfgRepeat').value),
       include_channels: include
     };
-    safeFetch(API_PATHS.measurement.start, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+    safeFetch(API_PATHS?.measurement?.start, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
       .then(r=>r.json())
       .then(j=>{ appendLog(j.message || 'Started'); if (j.ok){ btnStart.disabled=true; btnAbort.disabled=false; phaseBadge.className='badge bg-info'; phaseBadge.textContent='Starting'; } })
       .catch(e=> appendLog('Start failed: ' + e));
@@ -188,7 +188,7 @@
   btnAbort.addEventListener('click', ()=> abortModal.show());
   document.getElementById('confirmAbort').addEventListener('click', ()=>{
     abortModal.hide();
-    safeFetch(API_PATHS.measurement.abort,{method:'POST'})
+    safeFetch(API_PATHS?.measurement?.abort,{method:'POST'})
       .then(r=>r.json())
       .then(j=>{
         appendLog(j.message || 'Abort');
@@ -200,7 +200,7 @@
   // SSE
   function openSSE(){
     if (evtSrc) try{ evtSrc.close(); }catch(e){}
-    evtSrc = new EventSource(API_PATHS.measurement.events);
+    evtSrc = new EventSource(API_PATHS?.measurement?.events);
     evtSrc.onmessage = (e)=>{
       try{
         const d = JSON.parse(e.data);

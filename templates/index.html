@@ -34,33 +34,6 @@
     </div>
   </div>
 
-  <div class="row justify-content-center">
-    <div class="col-lg-8">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-          <ul class="nav nav-tabs justify-content-center mb-3" id="uiTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab">Home</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab">Results</button>
-            </li>
-          </ul>
-
-          <div class="tab-content" id="uiTabsContent">
-            <div class="tab-pane fade show active" id="home" role="tabpanel">
-              {% include "partials/home_tab.html" %}
-            </div>
-            <div class="tab-pane fade" id="results" role="tabpanel">
-              {% include "partials/results_tab.html" %}
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script>
     // Centralized safe fetch with limited retries
     let _fetchErrors = 0;
@@ -106,8 +79,7 @@
     }
 
     function pollConnectionStatus() {
-      const url = (window.API_PATHS?.connection?.status) || '/gasera/api/connection_status';
-      safeFetch(url)
+      safeFetch(API_PATHS?.connection?.status)
         .then(r => r.json())
         .then(s => updateConnBadge(!!(s && s.online)))
         .catch(() => updateConnBadge(false));
@@ -121,5 +93,33 @@
       setInterval(pollConnectionStatus, 2000);
     });
   </script>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+          <ul class="nav nav-tabs justify-content-center mb-3" id="uiTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab">Home</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab">Results</button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="uiTabsContent">
+            <div class="tab-pane fade show active" id="home" role="tabpanel">
+              {% include "partials/home_tab.html" %}
+            </div>
+            <div class="tab-pane fade" id="results" role="tabpanel">
+              {% include "partials/results_tab.html" %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
