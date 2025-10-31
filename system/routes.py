@@ -13,7 +13,7 @@ system_bp = Blueprint("system", __name__)
 
 # Unified default values
 DEFAULTS = {
-    KEY_MEASUREMENT_DURATION    : 300,
+    KEY_MEASUREMENT_DURATION    : 100,
     KEY_PAUSE_SECONDS           : 5,
     KEY_REPEAT_COUNT            : 1,
     KEY_INCLUDE_CHANNELS        : [True] * prefs.DEFAULT_INCLUDE_COUNT,
@@ -63,7 +63,6 @@ def update_preferences():
     if not updated:
         return jsonify({"ok": False, "error": "No valid keys to update"}), 400
 
-    info("[PREFS] updated", keys=updated)
     return jsonify({"ok": True, "updated": updated}), 200
 
 

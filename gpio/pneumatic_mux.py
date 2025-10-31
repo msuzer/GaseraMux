@@ -96,7 +96,7 @@ class CascadedMux:
 
     def home(self):
         """Home both muxes and reset combined index."""
-        warn("[CMUX] homing both multiplexers")
+        info("[CMUX] homing both multiplexers")
         self.mux1.home()
         self.mux2.home()
         self._virtual_index = 0

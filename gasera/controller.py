@@ -30,7 +30,7 @@ class GaseraController:
     def __init__(self):
         self.proto = GaseraProtocol()
     
-    def check_device_connection(self):
+    def is_connected(self):
         was_online = getattr(self, "_was_online", None)
         is_now = tcp_client.is_online()
         if was_online != is_now:

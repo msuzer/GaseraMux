@@ -23,11 +23,27 @@ engine = AcquisitionEngine(cmux)
 trigger = TriggerMonitor(engine)
 trigger.start()
 
-latest_progress = {}
+latest_progress = {"phase": "IDLE", "virtual_channel": 0, "repeat_index": 0}
 
+# ----------------------------------------------------------------------
+# Progress subscription
+# ----------------------------------------------------------------------
 def on_progress_update(progress):
+    """Normalize progress updates whether given as an object or dict."""
     global latest_progress
-    latest_progress = progress.__dict__
+    if isinstance(progress, dict):
+        latest_progress = progress
+    else:
+        # Convert dataclass or object to plain dict
+        try:
+            latest_progress = progress.__dict__.copy()
+        except AttributeError:
+            # Fallback: manual attribute extraction
+            latest_progress = {
+                "phase": getattr(progress, "phase", "IDLE"),
+                "virtual_channel": getattr(progress, "virtual_channel", 0),
+                "repeat_index": getattr(progress, "repeat_index", 0),
+            }
 
 engine.subscribe(on_progress_update)
 
@@ -36,21 +52,18 @@ engine.subscribe(on_progress_update)
 # ----------------------------------------------------------------------
 @gasera_bp.route("/api/connection_status")
 def gasera_api_connection_status() -> tuple[Response, int]:
-    return jsonify({"ok": True, "online": gasera.check_device_connection()}), 200
-
+    return jsonify({"ok": True, "online": gasera.is_connected()}), 200
 
 @gasera_bp.route("/api/data/live")
 def gasera_api_data_live() -> tuple[Response, int]:
     result = gasera.acon_proxy()
 
-    # Success path: dict, no error, has components
     if isinstance(result, dict) and not result.get("error") and result.get("components"):
         if "string" not in result:
             lines = [f"{c['label']}: {float(c['ppm']):.4f} ppm" for c in result["components"]]
             result["string"] = f"Measurement Results ({result['readable']}):\n" + "\n".join(lines)
         return jsonify(result), 200
 
-    # Any non-data case → return a single-line message (200)
     msg = "No measurement data yet"
     if isinstance(result, dict) and result.get("error"):
         msg = str(result["error"])
@@ -68,60 +81,61 @@ def gasera_api_data_live() -> tuple[Response, int]:
 def start_measurement() -> tuple[Response, int]:
     data = request.get_json(silent=True) or {}
     try:
-        # Save all valid preferences directly
         prefs.update_from_dict(data)
-        started = engine.start()
-        msg = "Measurement started" if started else "Measurement already running"
+        started, msg = engine.start()
+
         return jsonify({"ok": started, "message": msg}), 200
 
     except Exception as e:
         error(f"[MEAS] start failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
 @gasera_bp.route("/api/measurement/abort", methods=["POST"])
 def abort_measurement() -> tuple[Response, int]:
     if not engine.is_running():
         info("[MEAS] abort ignored (no active measurement)")
         return jsonify({"ok": False, "message": "No active measurement"}), 200
-    engine.stop()
-    warn("Measurement abort requested")
-    return jsonify({"ok": True, "message": "Abort signal sent"}), 200
 
+    engine.stop()
+    return jsonify({"ok": True, "message": "Abort signal sent"}), 200
 
 @gasera_bp.route("/api/measurement/status", methods=["GET"])
 def get_status():
     return jsonify({"ok": True, "progress": engine.get_progress()}), 200
 
-
+# ----------------------------------------------------------------------
+# Server-Sent Events
+# ----------------------------------------------------------------------
+import sys
 @gasera_bp.route("/api/measurement/events")
 def sse_events():
-    """Server-Sent Events stream of phase/channel updates."""
+    """SSE stream emitting current progress/phase."""
     def event_stream():
-        last_phase = None
+        last_state = {}
         last_beat = time.monotonic()
         try:
             while True:
-                if not engine.is_running() and not latest_progress:
-                    # still send a heartbeat every 10 s
-                    if time.monotonic() - last_beat > 10:
-                        yield ": keep-alive\n\n"   # SSE-spec comment line
-                        last_beat = time.monotonic()
-                    time.sleep(0.5)
-                    continue
-
+                # Always send current state when it changes
                 state = latest_progress.copy() if latest_progress else engine.get_progress()
-                phase = state.get("phase")
 
-                if phase != last_phase:
-                    payload = json.dumps(state)
-                    yield f"data: {payload}\n\n"
-                    last_phase = phase
+                # If state changed (any key), push it immediately
+                if state != last_state:
+                    yield f"data: {json.dumps(state)}\n\n"
+                    yield ":\n\n"
+                    # sys.stdout.flush()
+                    last_state = state.copy()
                     last_beat = time.monotonic()
-                elif time.monotonic() - last_beat > 10:
-                    # no change for >10 s → send heartbeat
+                    info(f"[SSE] sent update: {state}")
+                # Otherwise send a lightweight keep-alive every 2s so clients stay responsive
+                elif time.monotonic() - last_beat > 2:
                     yield ": keep-alive\n\n"
+                    yield ":\n\n"
+                    # sys.stdout.flush()
                     last_beat = time.monotonic()
+                    info(f"[SSE] sent keep-alive")
 
+                # Poll frequently to keep latency low (<1s). Adjust as needed for CPU load.
                 time.sleep(0.5)
         except GeneratorExit:
             info("[SSE] client disconnected")

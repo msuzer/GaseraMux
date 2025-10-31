@@ -30,8 +30,7 @@ class Preferences:
     DEFAULT_INCLUDE_COUNT = 31  # default number of channels to include
 
     def __init__(self, filename: str = "config/user_prefs.json"):
-        # Store prefs under system/ folder for consistency
-        self.file = Path(__file__).resolve().parent / filename
+        self.file = Path(filename)
         self.data: Dict[str, Any] = {}
         self.callbacks: List[Callable[[str, Any], None]] = []
         self._load()
@@ -39,7 +38,6 @@ class Preferences:
         # Ensure include_channels mask exists
         if "include_channels" not in self.data:
             self.data["include_channels"] = [True] * self.DEFAULT_INCLUDE_COUNT
-            info(f"[PREFS] created default include_channels mask ({self.DEFAULT_INCLUDE_COUNT} entries)")
             self.save()
 
     # ------------------------------------------------------------------
@@ -108,6 +106,7 @@ class Preferences:
         updated = []
         for k, v in d.items():
             # accept all known keys + include_channels list
+            info(f"[PREFS] updating {k} = {v}")
             if k in VALID_PREF_KEYS:
                 self.data[k] = v
                 updated.append(k)

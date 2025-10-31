@@ -62,12 +62,17 @@ DEFAULT_PATTERNS: Dict[str, Union[str, List[Pulse]]] = {
     "started":   ".",         # E (single short)
     "paused":    "..",        # I (two shorts) — loop-able externally if desired
     "ended":     "...",       # S (triple short)
+    "completed": "-.-.",      # C (dash-dot-dash-dot)
     "warning":   "--",        # M (two dashes)
     "error":     "ERR",       # letters E R R
     "fatal":     "SOS",       # classic
     "ok":        "K",         # -.- (OK/ack)
     "cancel":    "N",         # -. (No)
     "beacon":    "E",         # "." as a loopable heartbeat
+    "failed":    "-..",       # D (dash-dot-dot)
+    "invalid":   "..-.",      # F (dot-dot-dash-dot)
+    "busy":      "...-",      # V (dot-dot-dot-dash)
+    "step":      ".-.-",      # AR (dot-dash-dot-dash)
 
     # System / network
     "power_on":   "EE",       # double short
@@ -412,7 +417,7 @@ class AsyncBuzzer:
                     return True
                 # ON
                 try:
-                    gpio.set(BUZZER_PIN)
+                    gpio.reset(BUZZER_PIN)
                 except Exception:
                     # If GPIO raises, just attempt to continue off
                     pass

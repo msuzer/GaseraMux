@@ -2,7 +2,7 @@
 from __future__ import annotations
 import threading
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, field
 from typing import Optional, Callable
 
 from system.log_utils import info, warn, error, debug
@@ -21,31 +21,22 @@ from system.preferences import (
 
 class Phase:
     IDLE = "IDLE"
-    STARTING = "STARTING"
     MEASURING = "MEASURING"
-    STOPPING = "STOPPING"
     PAUSED = "PAUSED"
-    ADVANCING = "ADVANCING"
-    COMPLETED = "COMPLETED"
     ABORTED = "ABORTED"
-    ERROR = "ERROR"
 
-
-@ dataclass
+@dataclass
 class TaskConfig:
-    def __init__(self, measure_seconds: int, pause_seconds: int, repeat_count: int):
-        self.measure_seconds = measure_seconds
-        self.pause_seconds = pause_seconds
-        self.repeat_count = repeat_count
-        self.include_channels: list[bool] = []
-
+    measure_seconds: int
+    pause_seconds: int
+    repeat_count: int
+    include_channels: list[bool] = field(default_factory=list)
 
 class Progress:
     def __init__(self):
         self.phase = Phase.IDLE
         self.virtual_channel = 0
         self.repeat_index = 0
-
 
 class AcquisitionEngine:
     def __init__(self, cmux: CascadedMux):
@@ -63,16 +54,17 @@ class AcquisitionEngine:
     # Public control
     # ------------------------------------------------------------------
 
-    def start(self) -> bool:
+    def start(self) -> tuple[bool, str]:
         with self._lock:
             if self._worker and self._worker.is_alive():
                 warn("[ENGINE] start requested but already running")
-                return False
+                buzzer.play("busy")
+                return False, "Measurement already running"
 
             self._stop_event.clear()
 
             cfg = TaskConfig(
-                measure_seconds=int(prefs.get(KEY_MEASUREMENT_DURATION, 300)),
+                measure_seconds=int(prefs.get(KEY_MEASUREMENT_DURATION, 100)),
                 pause_seconds=int(prefs.get(KEY_PAUSE_SECONDS, 5)),
                 repeat_count=int(prefs.get(KEY_REPEAT_COUNT, 1)),
             )
@@ -81,18 +73,28 @@ class AcquisitionEngine:
             cfg.include_channels = list(include_mask)  # make immutable copy
             self.cfg = cfg
 
+            enabled_count = sum(self.cfg.include_channels)
+            if enabled_count == 0:
+                warn("[ENGINE] no channels enabled, skipping measurement")
+                buzzer.play("invalid")
+                return False, "No channels enabled"
+            
+            if not gasera.is_connected():
+                warn("[ENGINE] Gasera not connected, cannot start measurement")
+                buzzer.play("error")
+                return False, "Gasera not connected"
+
             self._worker = threading.Thread(target=self._run_loop, daemon=True)
             self._worker.start()
 
-            # info(f"[ENGINE] starting with config {asdict(cfg)}")
-            info("[ENGINE] starting with config", cfg=asdict(cfg))
-            buzzer.play("started")
-            return True
+            return True, "Measurement started"
 
     def stop(self):
         warn("[ENGINE] stop requested")
         buzzer.play("cancel")
         self._stop_event.set()
+        if self._worker and self._worker.is_alive():
+            self._worker.join(timeout=2.0)
 
     def is_running(self) -> bool:
         return self._worker and self._worker.is_alive()
@@ -113,79 +115,110 @@ class AcquisitionEngine:
     # ------------------------------------------------------------------
 
     def _run_loop(self):
-        try:
-            self.cmux.home()
-            self._set_phase(Phase.STARTING)
+        enabled_count = sum(self.cfg.include_channels)
+        info(f"[ENGINE] start: measure={self.cfg.measure_seconds}s, pause={self.cfg.pause_seconds}s, "
+            f"repeat={self.cfg.repeat_count}, enabled_channels={enabled_count}/{self.total_channels}")
 
+        try:
             for rep in range(self.cfg.repeat_count):
                 if self._stop_event.is_set():
-                    break
+                    break # exit outer loop upon stop request
+
                 self.progress.repeat_index = rep
+                self._home_mux()
 
+                processed = 0  # counts how many enabled channels have been measured
                 for vch, enabled in enumerate(self.cfg.include_channels):
-                    if self._stop_event.is_set():
-                        break
-                    if not enabled:
-                        continue
-
                     self.progress.virtual_channel = vch
-                    self._advance_to_next()
 
-                    self._start_measurement()
-                    self._wait_measurement()
-                    self._stop_measurement()
+                    if self._stop_event.is_set():
+                        break # exit inner loop upon stop request
 
-                    # Skip pause if last channel and last repeat
-                    if not (rep == self.cfg.repeat_count - 1 and vch == self.total_channels - 1):
+                    if enabled:
+                        self._set_phase(Phase.MEASURING)
+                        if not self._start_measurement():
+                            error("[ENGINE] Aborting: start_measurement failed")
+                            self.stop()
+                            break
+                        if not self._wait_measurement():
+                            warn("[ENGINE] Aborting: wait_measurement interrupted")
+                            break
+                        if not self._stop_measurement():
+                            error("[ENGINE] Aborting: stop_measurement failed")
+                            self.stop()
+                            break
+
+                        self._set_phase(Phase.PAUSED)
                         self._pause_between()
 
-            self._set_phase(Phase.COMPLETED)
+                        processed += 1
+                        if processed >= enabled_count:
+                            info("[ENGINE] all enabled channels processed for this repeat")
+                            break  # all enabled channels processed
+
+                    self._advance_to_next()
 
         except Exception as e:
             error(f"[ENGINE] run loop error: {e}")
-            self._set_phase(Phase.ERROR)
+            self.stop()
         finally:
-            gasera.stop_measurement()
-            self._set_phase(Phase.IDLE)
+            if self._stop_event.is_set():
+                self._set_phase(Phase.ABORTED)
+            else: # completed normally
+                self._set_phase(Phase.IDLE)
+                buzzer.play("completed")
+                info("[ENGINE] Measurement run complete")
+            self._stop_measurement()
 
     # ------------------------------------------------------------------
     # Phase handlers
     # ------------------------------------------------------------------
 
-    def _advance_to_next(self):
-        self._set_phase(Phase.ADVANCING)
-        buzzer.play("triggered")
-        self.cmux.select_next()
+    def _home_mux(self):
+        buzzer.play("home")
+        self.cmux.home()
+        time.sleep(1.0)  # allow settling
 
-    def _start_measurement(self):
-        self._set_phase(Phase.MEASURING)
-        buzzer.play("measure_on")
+    def _advance_to_next(self):
+        buzzer.play("step")
+        self.cmux.select_next()
+        time.sleep(1.0)  # allow settling
+
+    def _start_measurement(self) -> bool:
         resp = gasera.start_measurement(TaskIDs.DEFAULT)
         if not resp:
-            warn("[ENGINE] Gasera start_measurement returned None")
+            warn("[ENGINE] Gasera start_measurement failed")
+            return False
+        time.sleep(1.0)  # allow settling
+        return True
 
-    def _wait_measurement(self):
+    def _wait_measurement(self) -> bool:
+        """
+        Waits for the measurement duration unless stop is requested.
+        Returns False only if stop_event is already set (external abort).
+        """
         t0 = time.monotonic()
         while time.monotonic() - t0 < self.cfg.measure_seconds:
             if self._stop_event.is_set():
-                return
+                return False
             self._notify()
-            time.sleep(1.0)  # relaxed SSE update interval
+            time.sleep(1.0)
+        return True
 
-    def _stop_measurement(self):
-        self._set_phase(Phase.STOPPING)
-        buzzer.play("measure_off")
-        gasera.stop_measurement()
-        time.sleep(0.2)
+    def _stop_measurement(self) -> bool:
+        resp = gasera.stop_measurement()
+        if not resp:
+            warn("[ENGINE] Gasera stop_measurement failed")
+            return False
+        time.sleep(1.0)
+        return True
 
     def _pause_between(self):
-        self._set_phase(Phase.PAUSED)
-        buzzer.play("paused")
         self.timers.start("pause", self.cfg.pause_seconds)
         while not self.timers.is_expired("pause"):
             if self._stop_event.is_set():
                 return
-            time.sleep(0.1)
+            time.sleep(0.5)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -195,13 +228,6 @@ class AcquisitionEngine:
         with self._lock:
             self.progress.phase = phase
         info(f"[ENGINE] phase -> {phase}")
-
-        if phase == Phase.COMPLETED:
-            buzzer.play("ended")
-        elif phase == Phase.ERROR:
-            buzzer.play("error")
-        elif phase == Phase.ABORTED:
-            buzzer.play("cancel")
 
         self._notify()
 

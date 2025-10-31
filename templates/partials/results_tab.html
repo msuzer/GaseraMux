@@ -120,8 +120,6 @@
 	}
 
 	function fetchData() {
-		// One line to unify real/dummy without repeating code:
-		// safeFetch(API_PATHS?.data?.dummy).then(res => res.json()).then(data => {
 		safeFetch(API_PATHS?.data?.live).then(res => res.json()).then(data => {
 			// Non-data message from server → show one line and skip this tick
 			if (!data || data.message) {
