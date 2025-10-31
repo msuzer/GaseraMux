@@ -166,8 +166,8 @@ def sse_events():
                     last_state = state.copy()
                     last_beat = time.monotonic()
                     info(f"[SSE] sent update: {state}")
-                # Otherwise send a lightweight keep-alive every 2s so clients stay responsive
-                elif time.monotonic() - last_beat > 2:
+                # Otherwise send a lightweight keep-alive every 10s so clients stay responsive
+                elif time.monotonic() - last_beat > 10:
                     yield ": keep-alive\n\n"
                     # yield ":\n\n"
                     last_beat = time.monotonic()

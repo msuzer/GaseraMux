@@ -32,9 +32,6 @@
   <div class="text-center mb-4">
     <button id="btnStart" class="btn btn-success btn-lg px-5 me-2">Start Measurement</button>
     <button id="btnAbort" class="btn btn-danger btn-lg px-5" disabled>Abort</button>
-    <div class="progress mt-3" style="height: 10px;">
-      <div id="runProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%"></div>
-    </div>
   </div>
 
   <!-- Channel selection -->
@@ -52,22 +49,32 @@
     </div>
   </div>
 
-  <!-- Status & Log -->
-  <div class="card shadow-sm">
-    <div class="card-header">Status &amp; Log</div>
+  <!-- Measurement Status Card -->
+  <div class="card shadow-sm text-center py-4" id="statusCard">
     <div class="card-body">
-      <div class="small mb-2">
-        <strong>Channel:</strong> <span id="currChannel">–</span> |
-        <strong>Repeat:</strong> <span id="currRepeat">–</span> |
-        <strong>Phase:</strong> <span id="currPhase">IDLE</span>
+      <div class="d-flex flex-column align-items-center">
+        <!-- Channel icon -->
+        <div id="channelBadge"
+            class="rounded-circle d-flex align-items-center justify-content-center mb-2"
+            style="width:100px;height:100px;font-size:2.5rem;font-weight:bold;
+                    background-color:#e9ecef;color:#212529;">
+          –
+        </div>
+
+        <!-- Repeat info -->
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-arrow-repeat text-muted" style="font-size:1.2rem;"></i>
+          <span id="repeatInfo" class="fw-semibold">Repeat 0/0</span>
+        </div>
+
+        <!-- Optional progress bar -->
+        <div class="progress" style="width:80%;height:8px;">
+          <div id="runProgress" class="progress-bar progress-bar-striped progress-bar-animated"
+              role="progressbar" style="width:0%"></div>
+        </div>
       </div>
-      <div class="progress mb-2" style="height: 6px;">
-        <div id="statusProgress" class="progress-bar" style="width:0%"></div>
-      </div>
-      <div id="logBox" class="bg-light border rounded p-2 small" style="height:200px; overflow-y:auto; white-space:pre-wrap;"></div>
     </div>
   </div>
-</div>
 
 <!-- Abort modal -->
 <div class="modal fade" id="abortConfirmModal" tabindex="-1">
@@ -100,14 +107,14 @@
   const btnAbort = document.getElementById("btnAbort");
   const runProgress = document.getElementById("runProgress");
   const phaseBadge = document.getElementById("phaseBadge");
-  const logBox = document.getElementById("logBox");
   const grid = document.getElementById("channelGrid");
+  const channelBadge = document.getElementById("channelBadge");
+  const repeatInfo   = document.getElementById("repeatInfo");
 
   function appendLog(msg){
     if (!msg) return;
     const ts = new Date().toLocaleTimeString();
-    logBox.textContent += `[${ts}] ${msg}\n`;
-    logBox.scrollTop = logBox.scrollHeight;
+    console.log(`[${ts}] ${msg}`);
   }
 
   function applyPhase(phase){
@@ -116,8 +123,6 @@
     if (currentPhase === newPhase) return;
 
     currentPhase = newPhase;
-
-    document.getElementById('currPhase').textContent = currentPhase;
     phaseBadge.textContent = currentPhase;
 
     if (countdownTimer && currentPhase !== "IDLE") {
@@ -234,8 +239,6 @@
     .then(r=>r.json())
     .then(j=>{
       appendLog(j.message || 'Start requested');
-      // if (j.ok && currentPhase === "IDLE") applyPhase("STARTING");
-      // if (!j.ok) resetToIdle();
     })
     .catch(e=>{ appendLog('Start failed: ' + e); resetToIdle(); });
   }
@@ -262,33 +265,39 @@
     evtSrc = new EventSource(API_PATHS?.measurement?.events);
     evtSrc.onmessage = (e)=>{
       try{
-        console.log(e.data);
-
         const d = JSON.parse(e.data || "{}");
         const ch  = (d.virtual_channel ?? d.vch ?? 0);
         const rep = (d.repeat_index   ?? d.repeat ?? 0);
-
-        let phase = d.phase;
-        // Defensive: ignore empty or null phases that could reset UI too early
-        if (!phase || typeof phase !== "string" || phase.trim() === "") {
-          appendLog("[UI] Ignored blank phase update");
-          return;
-        }
-
-        document.getElementById('currChannel').textContent = ch + 1;
-        document.getElementById('currRepeat').textContent  = rep + 1;
-        // const pct = Math.max(0, Math.min(100, Math.round(((ch) / (TOTAL_CHANNELS - 1)) * 100)));
-        const selectedCount = document.querySelectorAll('.chbox:checked').length;
-        const pct = Math.max(0, Math.min(100, Math.round(((ch) / (selectedCount - 1)) * 100)));
-        runProgress.style.width = pct + '%';
-        document.getElementById('statusProgress').style.width = pct + '%';
+        let phase = d.phase || "IDLE";
 
         applyPhase(phase);
+
+        // Update channel badge number
+        channelBadge.textContent = ch + 1;
+
+        // Colorize by phase
+        switch (phase) {
+          case "MEASURING": channelBadge.style.backgroundColor = "#ffc107"; break; // yellow
+          case "PAUSED":    channelBadge.style.backgroundColor = "#adb5bd"; break; // gray
+          case "ABORTED":   channelBadge.style.backgroundColor = "#dc3545"; break; // red
+          case "IDLE":      channelBadge.style.backgroundColor = "#198754"; break; // green
+          default:          channelBadge.style.backgroundColor = "#e9ecef"; break; // default
+        }
+
+        // Repeat info
+        const totalRepeats = Number(document.getElementById("cfgRepeat").value) || 1;
+        repeatInfo.textContent = `Repeat ${rep + 1}/${totalRepeats}`;
+
+        // Progress
+        const selectedCount = document.querySelectorAll(".chbox:checked").length;
+        const pct = Math.max(0, Math.min(100, Math.round(((ch) / (selectedCount)) * 100)));
+        console.log(`Progress: ch ${ch}/${selectedCount} => ${pct}%`);
+        runProgress.style.width = pct + "%";
 
         if (d.connection && typeof window.updateConnBadge === "function") {
           window.updateConnBadge(!!d.connection.online);
         }
-      }catch(err){ appendLog('SSE parse error: ' + err); }
+      } catch(err){ appendLog('SSE parse error: ' + err); }
     };
     evtSrc.onerror = ()=>{ appendLog('[SSE] Connection lost, retrying…'); setTimeout(openSSE, 5000); };
   }
