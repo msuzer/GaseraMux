@@ -94,7 +94,7 @@
   let countdownTimer = null;
   let countdown = START_DELAY;
   let evtSrc = null;
-  let currentPhase = "IDLE";
+  let currentPhase = null;
 
   const btnStart = document.getElementById("btnStart");
   const btnAbort = document.getElementById("btnAbort");
@@ -111,7 +111,12 @@
   }
 
   function applyPhase(phase){
-    currentPhase = phase || "IDLE";
+    newPhase = phase || "IDLE";
+
+    if (currentPhase === newPhase) return;
+
+    currentPhase = newPhase;
+
     document.getElementById('currPhase').textContent = currentPhase;
     phaseBadge.textContent = currentPhase;
 
@@ -257,17 +262,13 @@
     evtSrc = new EventSource(API_PATHS?.measurement?.events);
     evtSrc.onmessage = (e)=>{
       try{
+        console.log(e.data);
+
         const d = JSON.parse(e.data || "{}");
         const ch  = (d.virtual_channel ?? d.vch ?? 0);
         const rep = (d.repeat_index   ?? d.repeat ?? 0);
-        console.debug('[SSE]', { 
-          phase: d.phase,
-          channel: ch + 1,
-          repeat: rep + 1, 
-          data: d 
-        });
-        let phase = d.phase;
 
+        let phase = d.phase;
         // Defensive: ignore empty or null phases that could reset UI too early
         if (!phase || typeof phase !== "string" || phase.trim() === "") {
           appendLog("[UI] Ignored blank phase update");
@@ -283,6 +284,10 @@
         document.getElementById('statusProgress').style.width = pct + '%';
 
         applyPhase(phase);
+
+        if (d.connection && typeof window.updateConnBadge === "function") {
+          window.updateConnBadge(!!d.connection.online);
+        }
       }catch(err){ appendLog('SSE parse error: ' + err); }
     };
     evtSrc.onerror = ()=>{ appendLog('[SSE] Connection lost, retrying…'); setTimeout(openSSE, 5000); };

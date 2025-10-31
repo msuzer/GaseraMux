@@ -4,10 +4,6 @@
 			<div class="card-header d-flex justify-content-between align-items-center">
 				<span>Live Measurements</span>
 				<div class="d-flex align-items-center gap-3">
-					<div class="input-group input-group-sm" style="width: 150px;">
-						<input type="number" min="1" max="60" step="1" id="chartInterval" class="form-control form-control-sm" title = "secs within [1, 60]" />
-						<button class="btn btn-outline-primary btn-sm" title = "Set Chart Update Interval in secs." onclick="applyChartInterval()">Set Interval</button>
-					</div>
 					<button class="btn btn-sm btn-outline-primary" title="Save Chart Screenshot" onclick="downloadImage()">Save Image</button>
 					<button class="btn btn-sm btn-outline-success" title="Save Chart Data in CSV Format" onclick="downloadCSV()">Save CSV</button>
 				</div>
@@ -119,72 +115,70 @@
 		});
 	}
 
-	function fetchData() {
-		safeFetch(API_PATHS?.data?.live).then(res => res.json()).then(data => {
-			// Non-data message from server → show one line and skip this tick
-			if (!data || data.message) {
-				const el = document.getElementById('liveNotice');
-				if (el) el.textContent = data && data.message ? data.message : 'No data';
-				return;
-			} else {
-				const el = document.getElementById('liveNotice');
-				if (el) el.textContent = '';
-			}
-			
-			const ts = data.timestamp;
-			if (typeof ts !== "number") return; // safety
+	function openLiveSSE() {
+		if (window.liveEvtSrc) try { window.liveEvtSrc.close(); } catch {}
+		window.liveEvtSrc = new EventSource(API_PATHS?.measurement?.events);
 
-			// Build label from device timestamp (not browser now())
-			const label = new Date(ts * 1000).toLocaleTimeString('en-GB', {
-				hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+		window.liveEvtSrc.onmessage = (e) => {
+			try {
+			const d = JSON.parse(e.data || "{}");
+			if (!d.live_data || !d.live_data.components) return; // skip non-data updates
+
+			const ts = Date.now() / 1000; // fallback
+			const dataTs = d.live_data.timestamp ?? ts;
+			const label = new Date(dataTs * 1000).toLocaleTimeString("en-GB", {
+				hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
 			});
 
-			const isDuplicate = (lastStamp !== null && ts === lastStamp);
-			let addedDataset = false;
+			const components = Object.entries(d.live_data.components)
+				.map(([label, ppm]) => ({ label, ppm }));
 
-			if (!isDuplicate) {
-				// new measurement moment → push a new label
-				liveChart.data.labels.push(label);
-				if (liveChart.data.labels.length > MAX_POINTS) liveChart.data.labels.shift();
-
-				// extend each existing dataset with a null placeholder for this moment
-				liveChart.data.datasets.forEach(ds => {
-					ds.data.push(null);
-					if (ds.data.length > MAX_POINTS) ds.data.shift();
-				});
+			updateChart(label, components);
+			} catch (err) {
+			console.error("[SSE results_tab]", err);
 			}
+		};
 
-			// index of the "current" slot (last label)
-			const idx = liveChart.data.labels.length - 1;
+		window.liveEvtSrc.onerror = () => {
+			console.warn("[SSE results_tab] connection lost, retrying...");
+			setTimeout(openLiveSSE, 5000);
+		};
+	}
 
-			// Upsert values for all reported components
-			data.components.forEach(c => {
-				let ds = liveChart.data.datasets.find(d => d.label === c.label);
-				if (!ds) {
-					// new gas track appears → align its length with labels and set style/visibility
-					ds = {
-						label: c.label,
-						data: new Array(liveChart.data.labels.length).fill(null),
-						hidden: trackVisibility[c.label] === false,
-						borderColor: c.color || undefined,
-						backgroundColor: c.color || undefined,
-						tension: 0.3
-					};
-					
-					liveChart.data.datasets.push(ds);
-					addedDataset = true;
-				}
-				// write the current ppm into the current slot.
-				// if duplicate, this overwrites the last value; if new timestamp, it replaces the null we just pushed.
-				ds.data[idx] = c.ppm;
+	function updateChart(label, components) {
+		const isDuplicate = (lastStamp !== null && label === lastStamp);
+		let addedDataset = false;
+
+		if (!isDuplicate) {
+			liveChart.data.labels.push(label);
+			if (liveChart.data.labels.length > MAX_POINTS) liveChart.data.labels.shift();
+			liveChart.data.datasets.forEach(ds => {
+			ds.data.push(null);
+			if (ds.data.length > MAX_POINTS) ds.data.shift();
 			});
+		}
+		const idx = liveChart.data.labels.length - 1;
 
-			if (addedDataset) renderTrackToggles();
-
-			lastStamp = ts;
-
-			liveChart.update();
+		components.forEach(c => {
+			let ds = liveChart.data.datasets.find(d => d.label === c.label);
+			if (!ds) {
+			ds = {
+				label: c.label,
+				data: new Array(liveChart.data.labels.length).fill(null),
+				hidden: trackVisibility[c.label] === false,
+				borderColor: c.color || undefined,
+				backgroundColor: c.color || undefined,
+				tension: 0.3
+			};
+			liveChart.data.datasets.push(ds);
+			addedDataset = true;
+			}
+			ds.data[idx] = c.ppm;
 		});
+
+		if (addedDataset) renderTrackToggles();
+		liveChart.update();
+		lastStamp = label;
 	}
 
 	function downloadImage() {
@@ -215,49 +209,9 @@
 		link.click();
 	}
 	
-	let updateTimer = null;
-
-	function setChartUpdateInterval(ms) {
-		if (updateTimer) clearInterval(updateTimer);
-		const updateInterval = 1000 * ms;
-		updateTimer = setInterval(fetchData, updateInterval);
-	}
-
-	function applyChartInterval() {
-		const value = parseInt(document.getElementById("chartInterval").value);
-		if (isNaN(value) || value < 1 || value > 60) {
-			alert("Please enter a value between 1 and 60 sec.");
-			return;
-		}
-
-		safeFetch(API_PATHS?.settings?.update, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ chart_update_interval: value })
-		})
-		.then(res => res.json())
-		.then(data => {
-			if (data.ok) {
-				setChartUpdateInterval(value);
-				alert("Chart interval updated.");
-			} else {
-				alert("Error: " + data.error);
-			}
-		});
-	}
-
-	// Initial fetch
-	safeFetch(API_PATHS?.settings?.read)
-		.then(res => res.json())
-		.then(data => {
-			const interval = data.chart_update_interval || 5;
-			document.getElementById("chartInterval").value = interval;
-			setChartUpdateInterval(interval);
-			trackVisibility = data.track_visibility || {};
+	document.addEventListener("DOMContentLoaded", () => {
+		openLiveSSE();
+		renderTrackToggles();
 	});
-
-	fetchData();
-	// dataFetchTimers.push(setInterval(fetchData, 5000));
-	setTimeout(renderTrackToggles, 1000); // Give chart a second to initialize datasets
 
 </script>

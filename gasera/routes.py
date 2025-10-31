@@ -7,6 +7,7 @@ from system.log_utils import info, warn, error
 from .controller import gasera
 from .trigger_monitor import TriggerMonitor
 import time, json
+import threading
 
 gasera_bp = Blueprint("gasera", __name__)
 
@@ -24,6 +25,8 @@ trigger = TriggerMonitor(engine)
 trigger.start()
 
 latest_progress = {"phase": "IDLE", "virtual_channel": 0, "repeat_index": 0}
+latest_connection = {"online": False}
+latest_live_data = {}
 
 # ----------------------------------------------------------------------
 # Progress subscription
@@ -46,6 +49,33 @@ def on_progress_update(progress):
             }
 
 engine.subscribe(on_progress_update)
+
+def background_status_updater():
+    """Periodically refresh connection and live data for SSE clients."""
+    global latest_connection, latest_live_data
+    while True:
+        try:
+            # Connection status
+            latest_connection = {"online": gasera.is_connected()}
+
+            # Live measurement data (safe & lightweight)
+            result = gasera.acon_proxy()
+            if isinstance(result, dict) and result.get("components"):
+                latest_live_data = {
+                    "timestamp": result.get("readable"),
+                    "components": {
+                        c["label"]: float(c["ppm"]) for c in result["components"]
+                    }
+                }
+            else:
+                latest_live_data = {}
+
+        except Exception as e:
+            error(f"[SSE] background updater error: {e}")
+
+        time.sleep(25.0)  # adjust frequency as needed
+
+threading.Thread(target=background_status_updater, daemon=True).start()
 
 # ----------------------------------------------------------------------
 # Connection & live data
@@ -107,31 +137,39 @@ def get_status():
 # ----------------------------------------------------------------------
 # Server-Sent Events
 # ----------------------------------------------------------------------
-import sys
 @gasera_bp.route("/api/measurement/events")
 def sse_events():
     """SSE stream emitting current progress/phase."""
     def event_stream():
         last_state = {}
         last_beat = time.monotonic()
+        last_live_ts = None
         try:
             while True:
-                # Always send current state when it changes
-                state = latest_progress.copy() if latest_progress else engine.get_progress()
+                # Build combined state
+                state = {
+                    **(latest_progress.copy() if latest_progress else engine.get_progress()),
+                    "connection": latest_connection,
+                }
+
+                # Include live_data only if it has a new timestamp
+                ld = latest_live_data.copy() if latest_live_data else {}
+                ts = ld.get("timestamp")
+                if ts and ts != last_live_ts:
+                    state["live_data"] = ld
+                    last_live_ts = ts
 
                 # If state changed (any key), push it immediately
                 if state != last_state:
                     yield f"data: {json.dumps(state)}\n\n"
                     yield ":\n\n"
-                    # sys.stdout.flush()
                     last_state = state.copy()
                     last_beat = time.monotonic()
                     info(f"[SSE] sent update: {state}")
                 # Otherwise send a lightweight keep-alive every 2s so clients stay responsive
                 elif time.monotonic() - last_beat > 2:
                     yield ": keep-alive\n\n"
-                    yield ":\n\n"
-                    # sys.stdout.flush()
+                    # yield ":\n\n"
                     last_beat = time.monotonic()
                     info(f"[SSE] sent keep-alive")
 

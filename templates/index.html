@@ -66,31 +66,21 @@
       document.body.prepend(box);
     }
 
-    function updateConnBadge(online) {
-      const b = document.getElementById('connBadge');
-      if (!b) return;
-      if (online) {
-        b.textContent = 'Gasera Online';
-        b.className = 'badge rounded-pill bg-success';
-      } else {
-        b.textContent = 'Gasera Offline';
-        b.className = 'badge rounded-pill bg-danger';
-      }
-    }
-
-    function pollConnectionStatus() {
-      safeFetch(API_PATHS?.connection?.status)
-        .then(r => r.json())
-        .then(s => updateConnBadge(!!(s && s.online)))
-        .catch(() => updateConnBadge(false));
-    }
+    window.updateConnBadge = function (online) {
+        const b = document.getElementById('connBadge');
+        if (!b) return;
+        if (online) {
+          b.textContent = 'Gasera Online';
+          b.className = 'badge rounded-pill bg-success';
+        } else {
+          b.textContent = 'Gasera Offline';
+          b.className = 'badge rounded-pill bg-danger';
+        }
+      };
 
     document.addEventListener("DOMContentLoaded", function () {
       const resultsTab = document.querySelector('#results-tab');
       resultsTab?.addEventListener('shown.bs.tab', () => { try { window.liveChart?.resize?.(); } catch(e){} });
-
-      pollConnectionStatus();
-      setInterval(pollConnectionStatus, 2000);
     });
   </script>
 

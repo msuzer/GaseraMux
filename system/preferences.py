@@ -10,7 +10,6 @@ VALID_PREF_KEYS = [
         "pause_seconds",
         "repeat_count",
         "include_channels",
-        "chart_update_interval",
         "track_visibility",
     ]
 
@@ -18,8 +17,7 @@ KEY_MEASUREMENT_DURATION  = VALID_PREF_KEYS[0]
 KEY_PAUSE_SECONDS         = VALID_PREF_KEYS[1]
 KEY_REPEAT_COUNT          = VALID_PREF_KEYS[2]
 KEY_INCLUDE_CHANNELS      = VALID_PREF_KEYS[3]
-KEY_CHART_UPDATE_INTERVAL = VALID_PREF_KEYS[4]
-KEY_TRACK_VISIBILITY      = VALID_PREF_KEYS[5]
+KEY_TRACK_VISIBILITY      = VALID_PREF_KEYS[4]
 
 class Preferences:
     """

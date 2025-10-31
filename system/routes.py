@@ -2,7 +2,6 @@ from flask import Blueprint, jsonify, request
 from system.preferences import prefs
 from system.log_utils import info, warn
 from system.preferences import (
-    KEY_CHART_UPDATE_INTERVAL,
     KEY_INCLUDE_CHANNELS,
     KEY_MEASUREMENT_DURATION,
     KEY_PAUSE_SECONDS,
@@ -17,7 +16,6 @@ DEFAULTS = {
     KEY_PAUSE_SECONDS           : 5,
     KEY_REPEAT_COUNT            : 1,
     KEY_INCLUDE_CHANNELS        : [True] * prefs.DEFAULT_INCLUDE_COUNT,
-    KEY_CHART_UPDATE_INTERVAL   : 5,
     KEY_TRACK_VISIBILITY        : {
         "Acetaldehyde (CH\u2083CHO)": True,
         "Ammonia (NH\u2083)": True,
