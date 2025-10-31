@@ -27,7 +27,7 @@ ETX = 0x03
 # -----------------------------------------------------------------------------
 
 # IP or hostname of the Gasera device or simulator
-GASERA_IP_ADDRESS = "192.168.0.100"
+GASERA_IP_ADDRESS = "127.0.0.1"
 GASERA_PORT_NUMBER = 8888
 
 class GaseraTCPClient:
