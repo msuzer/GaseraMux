@@ -115,34 +115,27 @@
 		});
 	}
 
-	function openLiveSSE() {
-		if (window.liveEvtSrc) try { window.liveEvtSrc.close(); } catch {}
-		window.liveEvtSrc = new EventSource(API_PATHS?.measurement?.events);
+	let lastSeenTs = null;
 
-		window.liveEvtSrc.onmessage = (e) => {
-			try {
-			const d = JSON.parse(e.data || "{}");
-			if (!d.live_data || !d.live_data.components) return; // skip non-data updates
+	function onLiveUpdate(d) {
+		if (!d.live_data || !d.live_data.components) return; // skip non-data updates
 
-			const ts = Date.now() / 1000; // fallback
-			const dataTs = d.live_data.timestamp ?? ts;
-			const label = new Date(dataTs * 1000).toLocaleTimeString("en-GB", {
-				hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
-			});
+		let ts = d.live_data.timestamp ??  Date.now() / 1000;
+		if (typeof ts === "string") {
+			ts = Date.parse(ts.replace(" ", "T")) / 1000;
+		}
 
-			const components = Object.entries(d.live_data.components)
-				.map(([label, ppm]) => ({ label, ppm }));
+		if (ts && ts === lastSeenTs) return;
+  		lastSeenTs = ts;
 
-			updateChart(label, components);
-			} catch (err) {
-			console.error("[SSE results_tab]", err);
-			}
-		};
+		const label = new Date(ts * 1000).toLocaleTimeString("en-GB", {
+			hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+		});
 
-		window.liveEvtSrc.onerror = () => {
-			console.warn("[SSE results_tab] connection lost, retrying...");
-			setTimeout(openLiveSSE, 5000);
-		};
+		const components = Object.entries(d.live_data.components)
+			.map(([label, ppm]) => ({ label, ppm }));
+
+		updateChart(label, components);
 	}
 
 	function updateChart(label, components) {
@@ -210,7 +203,8 @@
 	}
 	
 	document.addEventListener("DOMContentLoaded", () => {
-		openLiveSSE();
+		window.GaseraHub?.subscribe(onLiveUpdate);
+		console.log("[Live Chart] Subscribed to SSE for live updates");
 		renderTrackToggles();
 	});
 

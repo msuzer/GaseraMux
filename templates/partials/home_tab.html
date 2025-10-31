@@ -259,53 +259,46 @@
       .catch(e=> appendLog('Abort failed: ' + e));
   });
 
-  // SSE
-  function openSSE(){
-    if (evtSrc) try { evtSrc.close(); } catch {}
-    evtSrc = new EventSource(API_PATHS?.measurement?.events);
-    evtSrc.onmessage = (e)=>{
-      try{
-        const d = JSON.parse(e.data || "{}");
-        const ch  = (d.virtual_channel ?? d.vch ?? 0);
-        const rep = (d.repeat_index   ?? d.repeat ?? 0);
-        let phase = d.phase || "IDLE";
+  function SSEHandler(d){
+    try{
+      const ch  = (d.virtual_channel ?? d.vch ?? 0);
+      const rep = (d.repeat_index   ?? d.repeat ?? 0);
+      let phase = d.phase || "IDLE";
 
-        applyPhase(phase);
+      applyPhase(phase);
 
-        // Update channel badge number
-        channelBadge.textContent = ch + 1;
+      // Update channel badge number
+      channelBadge.textContent = ch + 1;
 
-        // Colorize by phase
-        switch (phase) {
-          case "MEASURING": channelBadge.style.backgroundColor = "#ffc107"; break; // yellow
-          case "PAUSED":    channelBadge.style.backgroundColor = "#adb5bd"; break; // gray
-          case "ABORTED":   channelBadge.style.backgroundColor = "#dc3545"; break; // red
-          case "IDLE":      channelBadge.style.backgroundColor = "#198754"; break; // green
-          default:          channelBadge.style.backgroundColor = "#e9ecef"; break; // default
-        }
+      // Colorize by phase
+      switch (phase) {
+        case "MEASURING": channelBadge.style.backgroundColor = "#ffc107"; break; // yellow
+        case "PAUSED":    channelBadge.style.backgroundColor = "#adb5bd"; break; // gray
+        case "ABORTED":   channelBadge.style.backgroundColor = "#dc3545"; break; // red
+        case "IDLE":      channelBadge.style.backgroundColor = "#198754"; break; // green
+        default:          channelBadge.style.backgroundColor = "#e9ecef"; break; // default
+      }
 
-        // Repeat info
-        const totalRepeats = Number(document.getElementById("cfgRepeat").value) || 1;
-        repeatInfo.textContent = `Repeat ${rep + 1}/${totalRepeats}`;
+      // Repeat info
+      const totalRepeats = Number(document.getElementById("cfgRepeat").value) || 1;
+      repeatInfo.textContent = `Repeat ${rep + 1}/${totalRepeats}`;
 
-        // Progress
-        const selectedCount = document.querySelectorAll(".chbox:checked").length;
-        const pct = Math.max(0, Math.min(100, Math.round(((ch) / (selectedCount)) * 100)));
-        console.log(`Progress: ch ${ch}/${selectedCount} => ${pct}%`);
-        runProgress.style.width = pct + "%";
+      // Progress
+      const selectedCount = document.querySelectorAll(".chbox:checked").length;
+      const pct = Math.max(0, Math.min(100, Math.round(((ch) / (selectedCount)) * 100)));
+      console.log(`Progress: ch ${ch}/${selectedCount} => ${pct}%`);
+      runProgress.style.width = pct + "%";
 
-        if (d.connection && typeof window.updateConnBadge === "function") {
-          window.updateConnBadge(!!d.connection.online);
-        }
-      } catch(err){ appendLog('SSE parse error: ' + err); }
-    };
-    evtSrc.onerror = ()=>{ appendLog('[SSE] Connection lost, retrying…'); setTimeout(openSSE, 5000); };
+      if (d.connection && typeof window.updateConnBadge === "function") {
+        window.updateConnBadge(!!d.connection.online);
+      }
+    } catch(err){ appendLog('SSE parse error: ' + err); }
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{
     loadPreferences();
-    openSSE();
     applyPhase("IDLE");
+    window.GaseraHub?.subscribe(SSEHandler);
   });
 })();
 </script>

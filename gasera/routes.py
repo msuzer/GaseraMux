@@ -8,6 +8,7 @@ from .controller import gasera
 from .trigger_monitor import TriggerMonitor
 import time, json
 import threading
+from datetime import datetime
 
 gasera_bp = Blueprint("gasera", __name__)
 
@@ -141,41 +142,41 @@ def get_status():
 def sse_events():
     """SSE stream emitting current progress/phase."""
     def event_stream():
-        last_state = {}
+        last_payload = None
         last_beat = time.monotonic()
-        last_live_ts = None
-        try:
-            while True:
-                # Build combined state
+
+        while True:
+            try:
                 state = {
                     **(latest_progress.copy() if latest_progress else engine.get_progress()),
                     "connection": latest_connection,
+                    "live_data": latest_live_data.copy()
                 }
 
-                # Include live_data only if it has a new timestamp
-                ld = latest_live_data.copy() if latest_live_data else {}
-                ts = ld.get("timestamp")
-                if ts and ts != last_live_ts:
-                    state["live_data"] = ld
-                    last_live_ts = ts
+                # always include live_data if available
+                if latest_live_data:
+                    state["live_data"] = latest_live_data.copy()
 
-                # If state changed (any key), push it immediately
-                if state != last_state:
-                    yield f"data: {json.dumps(state)}\n\n"
+                payload = json.dumps(state, sort_keys=True)
+
+                if payload != last_payload:
+                    yield f"data: {payload}\n\n"
                     yield ":\n\n"
-                    last_state = state.copy()
+                    last_payload = payload
                     last_beat = time.monotonic()
                     info(f"[SSE] sent update: {state}")
-                # Otherwise send a lightweight keep-alive every 10s so clients stay responsive
                 elif time.monotonic() - last_beat > 10:
                     yield ": keep-alive\n\n"
-                    # yield ":\n\n"
                     last_beat = time.monotonic()
-                    info(f"[SSE] sent keep-alive")
+                    info("[SSE] sent keep-alive")
 
-                # Poll frequently to keep latency low (<1s). Adjust as needed for CPU load.
                 time.sleep(0.5)
-        except GeneratorExit:
-            info("[SSE] client disconnected")
+
+            except GeneratorExit:
+                info("[SSE] client disconnected")
+                break
+            except Exception as e:
+                error(f"[SSE] stream error: {e}")
+                time.sleep(1)
 
     return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
