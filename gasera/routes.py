@@ -47,6 +47,7 @@ def on_progress_update(progress):
                 "phase": getattr(progress, "phase", "IDLE"),
                 "virtual_channel": getattr(progress, "virtual_channel", 0),
                 "repeat_index": getattr(progress, "repeat_index", 0),
+                "percent": getattr(progress, "percent", 0)
             }
 
 engine.subscribe(on_progress_update)
@@ -128,6 +129,7 @@ def abort_measurement() -> tuple[Response, int]:
         info("[MEAS] abort ignored (no active measurement)")
         return jsonify({"ok": False, "message": "No active measurement"}), 200
 
+    warn("[MEAS] Abort requested")
     engine.stop()
     return jsonify({"ok": True, "message": "Abort signal sent"}), 200
 

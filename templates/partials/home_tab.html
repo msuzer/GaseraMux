@@ -264,6 +264,7 @@
     try{
       const ch  = (d.virtual_channel ?? d.vch ?? 0);
       const rep = (d.repeat_index   ?? d.repeat ?? 0);
+      const pct = d.percent ?? 0;
       let phase = d.phase || "IDLE";
 
       applyPhase(phase);
@@ -283,11 +284,6 @@
       // Repeat info
       const totalRepeats = Number(document.getElementById("cfgRepeat").value) || 1;
       repeatInfo.textContent = `Repeat ${rep + 1}/${totalRepeats}`;
-
-      // Progress
-      const selectedCount = document.querySelectorAll(".chbox:checked").length;
-      const pct = Math.max(0, Math.min(100, Math.round(((ch) / (selectedCount)) * 100)));
-      console.log(`Progress: ch ${ch}/${selectedCount} => ${pct}%`);
       runProgress.style.width = pct + "%";
 
       if (d.connection && typeof window.updateConnBadge === "function") {

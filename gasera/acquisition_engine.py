@@ -37,6 +37,7 @@ class Progress:
         self.phase = Phase.IDLE
         self.virtual_channel = 0
         self.repeat_index = 0
+        self.percent = 0
 
 class AcquisitionEngine:
     def __init__(self, cmux: CascadedMux):
@@ -56,7 +57,7 @@ class AcquisitionEngine:
 
     def start(self) -> tuple[bool, str]:
         with self._lock:
-            if self._worker and self._worker.is_alive():
+            if self.is_running():
                 warn("[ENGINE] start requested but already running")
                 buzzer.play("busy")
                 return False, "Measurement already running"
@@ -90,10 +91,8 @@ class AcquisitionEngine:
             return True, "Measurement started"
 
     def stop(self):
-        warn("[ENGINE] stop requested")
-        buzzer.play("cancel")
-        self._stop_event.set()
-        if self._worker and self._worker.is_alive():
+        if self.is_running():
+            self._stop_event.set()
             self._worker.join(timeout=2.0)
 
     def is_running(self) -> bool:
@@ -128,6 +127,8 @@ class AcquisitionEngine:
                 self._home_mux()
 
                 processed = 0  # counts how many enabled channels have been measured
+                progress_pct = 0
+                self.progress.percent = progress_pct
                 for vch, enabled in enumerate(self.cfg.include_channels):
                     self.progress.virtual_channel = vch
 
@@ -148,10 +149,15 @@ class AcquisitionEngine:
                             self.stop()
                             break
 
+                        processed += 1
+
+                        progress_pct = round((processed / enabled_count) * 100)
+                        self.progress.percent = progress_pct
+                        info(f"[ENGINE] progress {processed}/{enabled_count} → {progress_pct}%")
                         self._set_phase(Phase.PAUSED)
+
                         self._pause_between()
 
-                        processed += 1
                         if processed >= enabled_count:
                             info("[ENGINE] all enabled channels processed for this repeat")
                             break  # all enabled channels processed
@@ -164,7 +170,9 @@ class AcquisitionEngine:
         finally:
             if self._stop_event.is_set():
                 self._set_phase(Phase.ABORTED)
+                buzzer.play("cancel")
             else: # completed normally
+                # self.progress.percent = 100
                 self._set_phase(Phase.IDLE)
                 buzzer.play("completed")
                 info("[ENGINE] Measurement run complete")

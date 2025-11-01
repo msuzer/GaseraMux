@@ -4,8 +4,10 @@ import socket
 import subprocess
 from datetime import datetime
 import time
-
 import platform
+
+from gasera.controller import gasera # for connection check
+
 IS_LINUX = platform.system() == "Linux"
 
 if  IS_LINUX:
@@ -33,9 +35,7 @@ if  IS_LINUX:
 
     def get_gasera_status():
         try:
-            r = requests.get("http://127.0.0.1:5001/gasera/api/connection_status", timeout=2)
-            data = r.json()
-            return "Online" if data.get("online") else "Offline"
+            return "Online" if gasera.is_connected() else "Offline"
         except Exception:
             return "Unknown"
 

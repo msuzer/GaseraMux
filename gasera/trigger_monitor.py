@@ -110,15 +110,10 @@ class TriggerMonitor:
 
     def _handle_short_press(self):
         """Short press: start measurement if idle."""
-        if self.engine.is_running():
-            info("[TRIGGER] Short press ignored (engine already running)")
-            return
-
         try:
             info("[TRIGGER] Short press → Start measurement")
-            started = self.engine.start()
-            if not started:
-                warn("[TRIGGER] Engine refused to start (busy or misconfigured)")
+            started, msg = self.engine.start()
+            # already logged inside engine.start()
         except Exception as e:
             warn(f"[TRIGGER] Start error: {e}")
 
