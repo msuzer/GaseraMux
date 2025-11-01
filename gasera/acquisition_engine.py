@@ -38,6 +38,7 @@ class Progress:
         self.virtual_channel = 0
         self.repeat_index = 0
         self.percent = 0
+        self.overall_percent = 0
 
 class AcquisitionEngine:
     def __init__(self, cmux: CascadedMux):
@@ -119,6 +120,8 @@ class AcquisitionEngine:
             f"repeat={self.cfg.repeat_count}, enabled_channels={enabled_count}/{self.total_channels}")
 
         try:
+            overall_steps = enabled_count * self.cfg.repeat_count
+            self.progress.overall_percent = 0
             for rep in range(self.cfg.repeat_count):
                 if self._stop_event.is_set():
                     break # exit outer loop upon stop request
@@ -127,8 +130,7 @@ class AcquisitionEngine:
                 self._home_mux()
 
                 processed = 0  # counts how many enabled channels have been measured
-                progress_pct = 0
-                self.progress.percent = progress_pct
+                self.progress.percent = 0
                 for vch, enabled in enumerate(self.cfg.include_channels):
                     self.progress.virtual_channel = vch
 
@@ -153,7 +155,9 @@ class AcquisitionEngine:
 
                         progress_pct = round((processed / enabled_count) * 100)
                         self.progress.percent = progress_pct
-                        info(f"[ENGINE] progress {processed}/{enabled_count} → {progress_pct}%")
+                        overall_progress_pct = round(((rep * enabled_count + processed) / overall_steps) * 100)
+                        self.progress.overall_percent = overall_progress_pct
+                        info(f"[ENGINE] progress: {progress_pct}% overall_progress: {overall_progress_pct}%")
                         self._set_phase(Phase.PAUSED)
 
                         self._pause_between()

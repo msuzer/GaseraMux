@@ -1,0 +1,260 @@
+/* ==========================================================
+   status.css — Circular Dashboard Visuals
+   ========================================================== */
+
+/* -------------------------------
+   1.  Common Wrappers & SVG Rings
+   ------------------------------- */
+
+.circle-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.circular-chart {
+  width: 110px;
+  height: 110px;
+  transform: rotate(-90deg);
+  position: relative;
+}
+
+.text-layer {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.circle-bg {
+  fill: none;
+  stroke: #eee;
+  stroke-width: 3.8;
+}
+
+.circle {
+  fill: none;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  transition: stroke 0.4s ease, stroke-dasharray 0.4s ease;
+}
+
+/* Color themes for circular progress rings */
+.circular-chart.blue .circle  { stroke: #0d6efd; }
+.circular-chart.green .circle { stroke: #198754; }
+
+.percentage {
+  fill: #212529;
+  font-weight: 700;
+  font-size: 0.6em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Dynamic arc colors */
+.circle[data-pct="0-25"]  { stroke: #dc3545; } /* red */
+.circle[data-pct="26-50"] { stroke: #fd7e14; } /* orange */
+.circle[data-pct="51-75"] { stroke: #ffc107; } /* yellow */
+.circle[data-pct="76-100"]{ stroke: #198754; } /* green */
+
+
+/* ==========================================================
+   2.  Info Circles (Channel / Repeat)
+   ========================================================== */
+
+.info-circle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f2f4f6 70%, #e9ecef 100%);
+  box-shadow:
+    inset 0 3px 8px rgba(255,255,255,0.6),
+    0 4px 8px rgba(0,0,0,0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.3s ease,
+    background-color 0.4s ease,
+    color 0.3s ease;
+}
+
+.info-circle:hover {
+  transform: scale(1.05);
+  box-shadow:
+    inset 0 4px 10px rgba(255,255,255,0.6),
+    0 6px 12px rgba(0,0,0,0.1);
+}
+
+.info-circle .value {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: inherit;
+}
+
+/* -------------------------------
+   Channel Card — phase-colored with smooth transition
+   ------------------------------- */
+
+.channel-info {
+  color: #0d6efd;
+  transition:
+    color 0.4s ease,
+    box-shadow 0.4s ease,
+    background-color 0.4s ease,
+    transform 0.2s ease;
+}
+
+.channel-info .value {
+  font-size: 3rem;
+  transition: color 0.4s ease;
+}
+
+@keyframes measuring-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Phase glow states with subtle fade-in/out */
+.channel-info[data-phase="MEASURING"] {
+  animation: measuring-pulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 16px 4px rgba(255, 193, 7, 0.45),
+              inset 0 3px 8px rgba(255,255,255,0.5);
+  color: #ffc107;
+}
+
+.channel-info[data-phase="PAUSED"] {
+  box-shadow: 0 0 16px 4px rgba(173, 181, 189, 0.45),
+              inset 0 3px 8px rgba(255,255,255,0.5);
+  color: #adb5bd;
+}
+
+.channel-info[data-phase="IDLE"] {
+  box-shadow: 0 0 16px 4px rgba(25, 135, 84, 0.45),
+              inset 0 3px 8px rgba(255,255,255,0.5);
+  color: #198754;
+}
+
+.channel-info[data-phase="ABORTED"] {
+  box-shadow: 0 0 16px 4px rgba(220, 53, 69, 0.45),
+              inset 0 3px 8px rgba(255,255,255,0.5);
+  color: #dc3545;
+}
+
+/* -------------------------------
+   Repeat Card — continuous color
+   ------------------------------- */
+
+.repeat-info {
+  --repeat-hue: 217;          /* base blue hue (switch to 150 for green) */
+  --repeat-lightness: 95%;    /* will darken from JS */
+  background: hsl(var(--repeat-hue), 60%, var(--repeat-lightness));
+  color: hsl(var(--repeat-hue), 25%, 25%);
+  font-size: 2.2rem;
+}
+
+.repeat-info.glow {
+  box-shadow: 0 0 12px 4px rgba(13, 110, 253, 0.35),
+              inset 0 3px 8px rgba(255,255,255,0.5);
+}
+
+
+/* ==========================================================
+   3.  Card Titles
+   ========================================================== */
+
+.card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 1rem;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-title {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+/* ==========================================================
+   4.  Status Footer Bar
+   ========================================================== */
+.status-footer {
+  background: #f8f9fa;
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  position: sticky;
+  bottom: 0;
+  z-index: 1030;
+}
+
+.status-footer {
+  max-width: 1280px;     /* adjust to match your main content */
+  margin: 0 auto;
+}
+
+.status-footer i {
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.status-footer.online {
+  background: #e9f7ef;
+  color: #198754;
+  border-color: rgba(25, 135, 84, 0.25);
+}
+
+.status-footer.offline {
+  background: #f8d7da;
+  color: #dc3545;
+  border-color: rgba(220, 53, 69, 0.25);
+}
+
+/* 6. Heartbeat on update */
+@keyframes heartbeat {
+  0% { transform: scale(1);   opacity: 1; }
+  30%{ transform: scale(1.18);opacity: 1; }
+  60%{ transform: scale(1.04);opacity: .95; }
+  100%{ transform: scale(1);  opacity: 1; }
+}
+
+.status-footer .beat {
+  animation: heartbeat 0.7s ease-out;
+}
+
+/* Mobile stacking */
+@media (max-width: 767.98px) {
+  .status-footer {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.25rem;
+  }
+}
+
+/* ==========================================================
+   5.  Responsive layout improvements
+   ========================================================== */
+@media (max-width: 767.98px) {
+  .info-circle {
+    width: 90px;
+    height: 90px;
+  }
+
+  .info-circle .value {
+    font-size: 1.6rem;
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+  }
+
+  .status-footer {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.25rem;
+  }
+}

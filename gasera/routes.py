@@ -47,7 +47,8 @@ def on_progress_update(progress):
                 "phase": getattr(progress, "phase", "IDLE"),
                 "virtual_channel": getattr(progress, "virtual_channel", 0),
                 "repeat_index": getattr(progress, "repeat_index", 0),
-                "percent": getattr(progress, "percent", 0)
+                "percent": getattr(progress, "percent", 0),
+                "overall_percent": getattr(progress, "overall_percent", 0)
             }
 
 engine.subscribe(on_progress_update)

@@ -11,6 +11,7 @@
   <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
   <script src="{{ url_for('static', filename='js/chartjs-plugin-zoom.min.js') }}"></script>
+  <link href="{{ url_for('static', filename='css/status.css') }}" rel="stylesheet">
   <script src="{{ url_for('static', filename='js/api_routes.js') }}"></script>
 
   <style>
@@ -30,7 +31,6 @@
     <div class="col-12 col-lg-8">
       <div class="d-flex align-items-center justify-content-between px-3 px-md-4">
         <h2 class="m-0">Gasera Multiplexer Controller</h2>
-        <span id="connBadge" class="badge rounded-pill bg-secondary ms-3 text-nowrap">Checking…</span>
       </div>
     </div>
   </div>
@@ -152,6 +152,91 @@
       </div>
     </div>
   </div>
+
+<footer class="status-footer-wrapper mt-3">
+  <div class="container-fluid p-3">
+    <div class="status-footer py-2 px-3 d-flex flex-wrap justify-content-between align-items-center text-muted small rounded shadow-sm">
+      <div>
+        <i class="bi bi-wifi me-1" id="connIcon"></i>
+        <span id="connStatus">Gasera Offline</span>
+      </div>
+      <div>
+        <i class="bi bi-clock-history me-1"></i>
+        <span>Last Update:</span>
+        <span id="lastUpdate">–</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+  <script>
+
+  // -----------------------------------------------------
+  // Global footer time updater (accepts formatted string)
+  // -----------------------------------------------------
+  function updateFooterTime(timestamp) {
+    const time   = document.getElementById("lastUpdate");
+
+    if (!time) return;
+    // Timestamp
+    const ts = timestamp
+      ? new Date(timestamp).toLocaleTimeString("en-GB", { hour12: false })
+      : "–";
+    time.textContent = ts;
+  }
+
+  // make globally accessible for all tabs
+  window.updateFooterTime = updateFooterTime;
+
+  function updateFooterStatus(isOnline) {
+    const footer = document.querySelector(".status-footer");
+    const icon   = document.getElementById("connIcon");
+    const text   = document.getElementById("connStatus");
+
+    // Connection state
+    if (isOnline) {
+      footer.classList.add("online");
+      footer.classList.remove("offline");
+      icon.className = "bi bi-wifi";
+      text.textContent = "Gasera Online";
+    } else {
+      footer.classList.add("offline");
+      footer.classList.remove("online");
+      icon.className = "bi bi-wifi-off";
+      text.textContent = "Gasera Offline";
+    }
+  }
+
+  // Heartbeat animation
+  function heartbeatFooter() {
+    const icon = document.getElementById("connIcon");
+    if (!icon) return;
+    icon.classList.remove("beat");
+    void icon.offsetWidth; // restart animation
+    icon.classList.add("beat");
+  }
+
+  let lastPhase = null;
+
+  // Subscribe globally
+  if (window.GaseraHub) {
+    window.GaseraHub.subscribe(d => {
+      let phase = d.phase || "IDLE";
+
+      if (phase !== lastPhase) {
+        lastPhase = phase;
+        let now = Date.now();
+        updateFooterTime(now);
+      }
+
+      if (d.connection) {
+        updateFooterStatus(!!d.connection.online);
+        heartbeatFooter();
+      }
+    });
+  }
+  </script>
+
 
 </body>
 </html>
