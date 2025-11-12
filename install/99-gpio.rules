@@ -1,0 +1,5 @@
+# GPIO device access
+SUBSYSTEM=="gpio", KERNEL=="gpiochip*", GROUP="gpio", MODE="0660"
+
+# I²C device access
+SUBSYSTEM=="i2c", KERNEL=="i2c-[0-9]*", GROUP="i2c", MODE="0660"

@@ -1,0 +1,31 @@
+<div class="row justify-content-center mb-4">
+	<div class="col-md-10">
+		<div class="card shadow-sm">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<span>Live Measurements</span>
+				<div class="d-flex align-items-center gap-3">
+					<button class="btn btn-sm btn-outline-primary" title="Save Chart Screenshot"
+						onclick="downloadImage()">Save Image</button>
+					<button class="btn btn-sm btn-outline-success" title="Save Chart Data in CSV Format"
+						onclick="downloadCSV()">Save CSV</button>
+				</div>
+			</div>
+			<div class="card-body">
+				<canvas id="liveChart" height="150"></canvas>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="row justify-content-center mb-3">
+	<div class="col-md-10">
+		<div class="card card-body" id="trackTogglePanel">
+			<h6 class="mb-3">Toggle Gas Components</h6>
+			<div id="trackToggles" class="d-flex flex-wrap gap-3"></div>
+		</div>
+
+		<div id="liveNotice" class="small text-muted mt-2" role="status" aria-live="polite"></div>
+	</div>
+</div>
+
+<script src="{{ url_for('static', filename='js/results_tab.js') }}" defer></script>

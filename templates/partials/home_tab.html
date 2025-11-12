@@ -1,0 +1,147 @@
+<div class="container-fluid p-3">
+
+    <div class="row g-3 text-center justify-content-center align-items-stretch mb-4">
+    <!-- Channel -->
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm py-3 h-100">
+        <div class="card-title fw-semibold text-muted">CHANNEL</div>
+        <div class="circle-wrapper">
+          <div class="info-circle channel-info" id="channelCircle">
+            <span id="channelBadge" class="value">–</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Repeat -->
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm py-3 h-100">
+        <div class="card-title fw-semibold text-muted">REPEAT</div>
+        <div class="circle-wrapper">
+          <svg viewBox="0 0 36 36" class="circular-chart repeat">
+            <path class="circle-bg"
+                  d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831"/>
+            <path id="repeatCircle" class="circle" stroke-dasharray="0,100"
+                  d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831"/>
+            <g class="text-layer">
+              <text x="18" y="18" class="percentage" id="repeatText">0/0</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Run progress -->
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm py-3 h-100">
+        <div class="card-title fw-semibold text-muted">RUN PROGRESS</div>
+        <div class="circle-wrapper">
+          <svg viewBox="0 0 36 36" class="circular-chart blue">
+            <path class="circle-bg" d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831" />
+            <path id="runCircle" class="circle" stroke-dasharray="0,100"
+              d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831" />
+            <g class="text-layer">
+              <text x="18" y="18" class="percentage" id="runPct">0%</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overall progress -->
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm py-3 h-100">
+        <div class="card-title fw-semibold text-muted">OVERALL</div>
+        <div class="circle-wrapper">
+          <svg viewBox="0 0 36 36" class="circular-chart green">
+            <path class="circle-bg" d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831" />
+            <path id="overallCircle" class="circle" stroke-dasharray="0,100"
+              d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831" />
+            <g class="text-layer">
+              <text x="18" y="18" class="percentage" id="overallPct">0%</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-0 mb-2">
+    <h5 class="mb-0">Measurement Parameters</h5>
+  </div>
+
+  <!-- Configuration -->
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <form id="configForm" class="row gy-2 gx-3 align-items-center">
+        <div class="col-sm-3">
+          <label class="form-label mb-0 small">Measurement (sec)</label>
+          <input id="cfgMeasure" type="number" class="form-control form-control-sm" value="100" min="10" max ="3600" step ="10">
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label mb-0 small">Pause (sec)</label>
+          <input id="cfgPause" type="number" class="form-control form-control-sm" value="5" min="1" max="1800" step="1">
+        </div>
+        <div class="col-sm-3">
+          <label class="form-label mb-0 small">Repeat Count</label>
+          <input id="cfgRepeat" type="number" class="form-control form-control-sm" value="1" min="1" max="100" step="1">
+        </div>
+        <div class="col-sm-3 form-check form-switch mt-4 pt-1">
+          <input id="cfgBuzzer" class="form-check-input" type="checkbox" unchecked>
+          <label class="form-check-label small">Enable Buzzer</label>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Start / Abort -->
+  <div class="text-center mt-4 mb-4">
+    <button id="btnStart" class="btn btn-success btn-lg px-5 me-2">Start Measurement</button>
+    <button id="btnAbort" class="btn btn-danger btn-lg px-5" disabled>Abort</button>
+  </div>
+
+  <!-- Channel selection -->
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <span>Jar Selection</span>
+        <i id="gridLockIcon" class="bi bi-unlock text-success" title="Grid unlocked"></i>
+      </div>
+
+      <div class="btn-group btn-group-sm">
+        <button id="btnAll" class="btn btn-outline-secondary" type="button">Select All</button>
+        <button id="btnNone" class="btn btn-outline-secondary" type="button">Deselect All</button>
+        <button id="btnInvert" class="btn btn-outline-secondary" type="button">Invert</button>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div id="jarGrid" class="d-flex flex-wrap gap-3 justify-content-start"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Abort modal -->
+<div class="modal fade" id="abortConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning-subtle">
+        <h5 class="modal-title">Confirm Abort</h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0">Abort current measurement? This will immediately stop Gasera operation.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="confirmAbort" type="button" class="btn btn-danger">Yes, Abort</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/home_tab_core.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/home_tab_visual.js') }}" defer></script>

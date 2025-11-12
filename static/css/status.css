@@ -1,0 +1,403 @@
+/* ==========================================================
+   status.css — Circular Dashboard Visuals
+   ========================================================== */
+
+/* -------------------------------
+   1.  Common Wrappers & SVG Rings
+   ------------------------------- */
+
+.circle-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.circular-chart {
+  width: 110px;
+  height: 110px;
+  transform: rotate(-90deg);
+  position: relative;
+}
+
+.text-layer {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.circle-bg {
+  fill: none;
+  stroke: #eee;
+  stroke-width: 3.8;
+}
+
+.circle {
+  fill: none;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  transition: stroke 0.4s ease, stroke-dasharray 0.4s ease;
+}
+
+/* Color themes for circular progress rings */
+.circular-chart.blue .circle  { stroke: #0d6efd; }
+.circular-chart.green .circle { stroke: #198754; }
+
+.percentage {
+  fill: #212529;
+  font-weight: 700;
+  font-size: 0.6em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Dynamic arc colors */
+.circle[data-pct="0-25"]  { stroke: #dc3545; } /* red */
+.circle[data-pct="26-50"] { stroke: #fd7e14; } /* orange */
+.circle[data-pct="51-75"] { stroke: #ffc107; } /* yellow */
+.circle[data-pct="76-100"]{ stroke: #198754; } /* green */
+
+
+/* ==========================================================
+   2.  Info Circles (Channel / Repeat)
+   ========================================================== */
+
+.info-circle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f2f4f6 70%, #e9ecef 100%);
+  box-shadow:
+    inset 0 3px 8px rgba(255,255,255,0.6),
+    0 4px 8px rgba(0,0,0,0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.3s ease,
+    background-color 0.4s ease,
+    color 0.3s ease;
+}
+
+.info-circle:hover {
+  transform: scale(1.05);
+  box-shadow:
+    inset 0 4px 10px rgba(255,255,255,0.6),
+    0 6px 12px rgba(0,0,0,0.1);
+}
+
+.info-circle .value {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: inherit;
+}
+
+/* -------------------------------
+   Channel Card — phase-colored with smooth transition
+   ------------------------------- */
+
+.channel-info {
+  color: #0d6efd;
+  transition:
+    color 0.4s ease,
+    box-shadow 0.4s ease,
+    background-color 0.4s ease,
+    transform 0.2s ease;
+}
+
+.channel-info .value {
+  font-size: 3rem;
+  transition: color 0.4s ease;
+}
+
+@keyframes measuring-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Phase glow states with subtle fade-in/out */
+.channel-info[data-phase="MEASURING"] {
+  animation: measuring-pulse 1.2s ease-in-out infinite;
+  box-shadow:
+    0 0 16px 4px rgba(255, 193, 7, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #ffc107; /* bright yellow */
+}
+
+.channel-info[data-phase="PAUSED"] {
+  box-shadow:
+    0 0 14px 3px rgba(25, 135, 84, 0.35),
+    inset 0 2px 6px rgba(255, 255, 255, 0.5);
+  color: #198754; /* green */
+}
+
+.channel-info[data-phase="IDLE"] {
+  box-shadow:
+    0 0 16px 4px rgba(181, 137, 51, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #b58933; /* amber */
+}
+
+.channel-info[data-phase="ABORTED"] {
+  box-shadow:
+    0 0 16px 4px rgba(220, 53, 69, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #dc3545; /* red */
+}
+
+.channel-info[data-phase="SWITCHING"] {
+  animation: switching-pulse 0.8s ease-in-out infinite;
+  box-shadow:
+    0 0 16px 4px rgba(13, 110, 253, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #0d6efd; /* bright bootstrap blue */
+}
+
+@keyframes switching-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 8px 2px rgba(13, 110, 253, 0.2),
+      inset 0 2px 6px rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 18px 5px rgba(13, 110, 253, 0.55),
+      inset 0 3px 8px rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* -------------------------------
+   Repeat Card — continuous color
+   ------------------------------- */
+
+.repeat-info {
+  --repeat-hue: 217;          /* base blue hue (switch to 150 for green) */
+  --repeat-lightness: 95%;    /* will darken from JS */
+  background: hsl(var(--repeat-hue), 60%, var(--repeat-lightness));
+  color: hsl(var(--repeat-hue), 25%, 25%);
+  font-size: 2.2rem;
+}
+
+.repeat-info.glow {
+  box-shadow: 0 0 12px 4px rgba(13, 110, 253, 0.35),
+              inset 0 3px 8px rgba(255,255,255,0.5);
+}
+
+.circular-chart.repeat .circle {
+  stroke: #dc3545; /* Bootstrap red */
+}
+
+/* ==========================================================
+   3.  Card Titles
+   ========================================================== */
+
+.card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 1rem;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-title {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+/* ==========================================================
+   4.  Status Footer Bar
+   ========================================================== */
+.status-footer {
+  background: #f8f9fa;
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  position: sticky;
+  bottom: 0;
+  z-index: 1030;
+}
+
+.status-footer {
+  max-width: 1280px;     /* adjust to match your main content */
+  margin: 0 auto;
+}
+
+.status-footer i {
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.status-footer.online {
+  background: #e9f7ef;
+  color: #198754;
+  border-color: rgba(25, 135, 84, 0.25);
+}
+
+.status-footer.offline {
+  background: #f8d7da;
+  color: #dc3545;
+  border-color: rgba(220, 53, 69, 0.25);
+}
+
+/* 6. Heartbeat on update */
+@keyframes heartbeat {
+  0% { transform: scale(1);   opacity: 1; }
+  30%{ transform: scale(1.18);opacity: 1; }
+  60%{ transform: scale(1.04);opacity: .95; }
+  100%{ transform: scale(1);  opacity: 1; }
+}
+
+.status-footer .beat {
+  animation: heartbeat 0.7s ease-out;
+}
+
+/* Mobile stacking */
+@media (max-width: 767.98px) {
+  .status-footer {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.25rem;
+  }
+}
+
+/* ==========================================================
+   5.  Responsive layout improvements
+   ========================================================== */
+@media (max-width: 767.98px) {
+  .info-circle {
+    width: 90px;
+    height: 90px;
+  }
+
+  .info-circle .value {
+    font-size: 1.6rem;
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+  }
+
+  .status-footer {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.25rem;
+  }
+}
+
+/* ==========================================================
+   6.  Alert Box Adjustments
+   ========================================================== */
+   
+/* --- Centered Toast Alert --- */
+.center-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 1.2rem 2rem;
+  border-radius: 0.75rem;
+  font-size: 1.2rem;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  z-index: 3000;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  cursor: pointer;
+}
+
+/* color variants */
+.center-toast.success {
+  background-color: rgba(25, 135, 84, 0.95); /* green */
+}
+
+.center-toast.danger {
+  background-color: rgba(220, 53, 69, 0.95); /* red */
+}
+
+.center-toast.info {
+  background-color: rgba(13, 110, 253, 0.95); /* blue */
+}
+
+/* fade-in animation */
+.center-toast.show {
+  opacity: 1;
+}
+
+/* optional subtle hover */
+.center-toast:hover {
+  filter: brightness(1.05);
+}
+
+.center-toast small {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-top: 0.5rem;
+}
+
+/* ==========================================================
+   Utility Classes
+   ========================================================== */
+
+.hover-shadow:hover {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.2s ease;
+}
+
+canvas#liveChart {
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* ==========================================================
+   7.  Version Manager Specific Styles
+   ========================================================== */
+/* Version Manager layout refinements */
+#vm-last-update {
+  font-size: 0.85rem;
+  color: #6c757d;               /* Bootstrap's text-secondary */
+  display: flex;
+  align-items: center;
+}
+
+/* keep spacing tight between clock emoji and text */
+#vm-last-update::before {
+  margin-right: 0.25rem;
+}
+
+/* fine-tune refresh button alignment */
+#vm-refresh-btn {
+  min-width: 140px;             /* consistent width even when disabled */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+/* slightly reduce vertical gap between status and last-update rows */
+#vm-status + div {
+  margin-top: 0.25rem !important;
+}
+
+/* spinner size tweak for visual balance */
+#vm-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* responsive adjustment: stack neatly on narrow screens */
+@media (max-width: 576px) {
+  #vm-last-update,
+  #vm-refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  #vm-refresh-btn {
+    margin-top: 0.3rem;
+  }
+}
