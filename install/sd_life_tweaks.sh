@@ -63,7 +63,7 @@ if (( ASSUME_YES == 0 )); then
 
 This will apply SD-card longevity tweaks:
 
-  • Add 'noatime,commit=60' to root filesystem (ext4)
+  • Add 'noatime,nodiratime,commit=60' to root filesystem (ext4)
   • Mount /var/log, /tmp, /var/tmp as tmpfs (RAM)
   • Make systemd journal volatile with caps (logs lost on reboot)
   • Disable disk swap (mask swap.target). Optional: enable zram swap.
@@ -147,41 +147,38 @@ ROOT_FSTYPE="$(findmnt -no FSTYPE / || true)"
 
 log "Root: $ROOT_SRC ($ROOT_FSTYPE)"
 
-# 1) Add noatime,commit=60 to root (ext4 only)
+# 1) Add noatime,nodiratime,commit=60,data=writeback to root (ext4)
 if [[ "$ROOT_FSTYPE" == "ext4" ]]; then
   backup_file /etc/fstab
-  if grep -E "^[^#].*\\s/\\s+ext4\\s" /etc/fstab >/dev/null; then
-    # If options present, add/merge
+  if grep -E "^[^#].*\s/\s+ext4\s" /etc/fstab >/dev/null; then
     CURRENT_LINE="$(grep -E '^[^#].*\s/\s+ext4\s' /etc/fstab | head -n1)"
     NEW_LINE="$(echo "$CURRENT_LINE" | awk '{
       opts=$4;
-      if (opts=="defaults" || opts=="") opts="defaults";
-      # add noatime if missing
+      if (opts=="" || opts=="defaults") opts="defaults";
       if (opts !~ /(^|,)noatime(,|$)/) opts=opts",noatime";
-      # add commit=60 if missing
+      if (opts !~ /(^|,)nodiratime(,|$)/) opts=opts",nodiratime";
       if (opts !~ /(^|,)commit=[0-9]+(,|$)/) opts=opts",commit=60";
+      if (opts !~ /(^|,)data=writeback(,|$)/) opts=opts",data=writeback";
       $4=opts; print
     }')"
+
     if [[ "$CURRENT_LINE" != "$NEW_LINE" ]]; then
-      run "sed -i \"s@$(printf '%s' "$CURRENT_LINE" | sed 's:[].[^$\\*/]:\\&:g')@$NEW_LINE@\" /etc/fstab"
-      log "Updated ext4 mount options for / -> noatime,commit=60"
-    else
-      log "Root already has noatime/commit=60"
+      run "sed -i \"s@$(printf '%s' "$CURRENT_LINE" | sed 's:[].[^$\/\\*]:\\&:g')@$NEW_LINE@\" /etc/fstab"
+      log "Updated ext4 mount options for / -> noatime,nodiratime,commit=60,data=writeback"
     fi
-  else
-    warn "Could not find ext4 root line in /etc/fstab—skipping option edit."
   fi
-else
-  warn "Root FS is $ROOT_FSTYPE (not ext4). Skipping noatime/commit."
+
+  # Live remount
+  run "mount -o remount,noatime,nodiratime,commit=60,data=writeback /"
 fi
 
 # 2) tmpfs for /var/log, /tmp, /var/tmp
-ensure_fstab_entry "tmpfs /var/log  tmpfs defaults,noatime,mode=0755,size=50m 0 0"
-ensure_fstab_entry "tmpfs /tmp      tmpfs defaults,noatime,mode=1777,size=100m 0 0"
-ensure_fstab_entry "tmpfs /var/tmp  tmpfs defaults,noatime,mode=1777,size=100m 0 0"
-append_undo "run \"sed -i '/tmpfs \\/var\\/log  tmpfs defaults,noatime,mode=0755,size=50m 0 0/d' /etc/fstab\""
-append_undo "run \"sed -i '/tmpfs \\/tmp      tmpfs defaults,noatime,mode=1777,size=100m 0 0/d' /etc/fstab\""
-append_undo "run \"sed -i '/tmpfs \\/var\\/tmp  tmpfs defaults,noatime,mode=1777,size=100m 0 0/d' /etc/fstab\""
+ensure_fstab_entry "tmpfs /var/log  tmpfs defaults,noatime,nodiratime,mode=0755,size=50m 0 0"
+ensure_fstab_entry "tmpfs /tmp      tmpfs defaults,noatime,nodiratime,mode=1777,size=100m 0 0"
+ensure_fstab_entry "tmpfs /var/tmp  tmpfs defaults,noatime,nodiratime,mode=1777,size=100m 0 0"
+append_undo "run \"sed -i '/tmpfs \\/var\\/log  tmpfs defaults,noatime,nodiratime,mode=0755,size=50m 0 0/d' /etc/fstab\""
+append_undo "run \"sed -i '/tmpfs \\/tmp      tmpfs defaults,noatime,nodiratime,mode=1777,size=100m 0 0/d' /etc/fstab\""
+append_undo "run \"sed -i '/tmpfs \\/var\\/tmp  tmpfs defaults,noatime,nodiratime,mode=1777,size=100m 0 0/d' /etc/fstab\""
 
 run "mkdir -p /var/log /tmp /var/tmp"
 run "chmod 0755 /var/log; chmod 1777 /tmp /var/tmp"
@@ -194,11 +191,26 @@ run "cat > '$JOUR_CFG' <<EOF
 Storage=volatile
 RuntimeMaxUse=50M
 RuntimeMaxFileSize=10M
+SystemMaxUse=1M
 RateLimitIntervalSec=30s
 RateLimitBurst=200
 EOF"
 append_undo "run \"rm -f '$JOUR_CFG'\""
 append_undo "run \"systemctl try-reload-or-restart systemd-journald || true\""
+
+# Disable apt-daily timers (from simple script)
+log "Disabling apt-daily services & timers..."
+run "systemctl mask apt-daily.service apt-daily-upgrade.service || true"
+run "systemctl disable apt-daily.timer apt-daily-upgrade.timer || true"
+run "systemctl stop apt-daily.timer apt-daily-upgrade.timer || true"
+
+append_undo "run \"systemctl unmask apt-daily.service apt-daily-upgrade.service || true\""
+append_undo "run \"systemctl enable apt-daily.timer apt-daily-upgrade.timer || true\""
+
+# Disable mlocate updatedb (writes a lot)
+log "Disabling mlocate-updatedb..."
+run "systemctl disable --now mlocate-updatedb.service 2>/dev/null || true"
+run "systemctl disable --now mlocate-updatedb.timer 2>/dev/null || true"
 
 # 4) Disable swap (mask) and comment fstab swaps
 if swapon --noheadings | grep -q .; then
@@ -263,6 +275,11 @@ append_undo "run \"systemctl restart systemd-journald || true\""
 append_undo "run \"systemctl daemon-reload || true\""
 
 cat <<DONE
+
+log "Dropping caches..."
+run "sync"
+run "echo 3 > /proc/sys/vm/drop_caches"
+run "sync"
 
 ✅ SD longevity tweaks applied (version $VERSION).
 
