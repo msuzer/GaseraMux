@@ -10,11 +10,20 @@ ExecStart=/usr/bin/python3 cli.py
 Restart=on-failure
 
 # Security and file perms:
-UMask=0027              # new files default to 640/750 instead of 644/755
-NoNewPrivileges=true    # prevent privilege escalation
-PrivateTmp=true         # give service its own /tmp
-ProtectSystem=full      # mount system dirs read-only
-ProtectHome=true        # hide /home from service
+# new files default to 640/750 instead of 666/777
+UMask=0027
+
+# prevent privilege escalation
+NoNewPrivileges=yes
+
+# give service its own /tmp
+PrivateTmp=yes
+
+# mount system dirs read-only
+ProtectSystem=full
+
+# hide /home from service
+ProtectHome=yes
 
 [Install]
 WantedBy=multi-user.target
