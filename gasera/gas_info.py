@@ -4,17 +4,17 @@ CAS_INFO: Dict[str, Dict[str, str]] = {
     "74-82-8": {
         "name": "Methane",
         "formula": "CH₄",
-        "color": "#1f77b4",
+        "color": "#FF0000",
     },
     "124-38-9": {
         "name": "Carbon Dioxide",
         "formula": "CO₂",
-        "color": "#ff7f0e",
+        "color": "#00FF00",
     },
     "7732-18-5": {
         "name": "Water Vapor",
         "formula": "H₂O",
-        "color": "#2ca02c",
+        "color": "#00E5FF",
     },
     "630-08-0": {
         "name": "Carbon Monoxide",
@@ -24,12 +24,12 @@ CAS_INFO: Dict[str, Dict[str, str]] = {
     "10024-97-2": {
         "name": "Nitrous Oxide",
         "formula": "N₂O",
-        "color": "#9467bd",
+        "color": "#FFFF00",
     },
     "7664-41-7": {
         "name": "Ammonia",
         "formula": "NH₃",
-        "color": "#8c564b",
+        "color": "#FF8C26",
     },
     "7446-09-5": {
         "name": "Sulfur Dioxide",

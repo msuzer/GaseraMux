@@ -15,8 +15,8 @@ system_bp = Blueprint("system", __name__)
 
 # Unified default values
 DEFAULTS = {
-    KEY_MEASUREMENT_DURATION    : 100,
-    KEY_PAUSE_SECONDS           : 5,
+    KEY_MEASUREMENT_DURATION    : 300,
+    KEY_PAUSE_SECONDS           : 300,
     KEY_REPEAT_COUNT            : 1,
     KEY_BUZZER_ENABLED          : True,
     KEY_INCLUDE_CHANNELS        : [True] * prefs.DEFAULT_INCLUDE_COUNT,
