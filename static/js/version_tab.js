@@ -222,6 +222,14 @@ function vm_setAdminVisible(show) {
   if (card) card.style.display = show ? "" : "none";
 }
 
+function vm_forceAdminReset(reason = "") {
+  if (VM_ADMIN_MODE) {
+    VM_ADMIN_MODE = false;
+    vm_setAdminVisible(false);
+    if (reason) console.log("Admin mode reset:", reason);
+  }
+}
+
 // Listen for secret combo: Ctrl + Shift + V
 document.addEventListener("keydown", (ev) => {
   if (ev.ctrlKey && ev.shiftKey && ev.code === "KeyV") {
@@ -235,13 +243,19 @@ document.addEventListener("keydown", (ev) => {
   }
 });
 
-// Listen for tab changes
+// --- Extra security: auto-reset admin mode in more scenarios ---
+// 1. Page becomes hidden (backgrounded, tab switch, screen off)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    vm_forceAdminReset("page hidden");
+  }
+});
+
+// 2. tab changes
 document.addEventListener('shown.bs.tab', (event) => {
   const newTarget = event.target.getAttribute('data-bs-target');
   if (newTarget !== '#tab-version') {
-    VM_ADMIN_MODE = false;
-    vm_setAdminVisible(false);
-    console.log("Admin mode reset (switched tab)");
+    vm_forceAdminReset("Admin mode reset (switched tab)");
   }
 });
 
@@ -259,9 +273,41 @@ document.addEventListener("DOMContentLoaded", () => {
     vm_fetchLocal().then(vm_fetchCommits);
 
   vm_setAdminVisible(false);
+  vm_registerTapArea();
 
   document.getElementById("vm-checkout-btn").addEventListener("click", vm_doCheckout);
   document.getElementById("vm-rollback-btn").addEventListener("click", vm_doRollback);
   document.getElementById("vm-refresh-btn").addEventListener("click", vm_forceRefresh);
 });
 
+// --- Mobile-friendly admin unlock: 7 taps ---
+let VM_TAP_COUNT = 0;
+let VM_TAP_TIMER = null;
+const VM_TAP_REQUIRED = 7;
+const VM_TAP_TIMEOUT = 3000; // 3 seconds to complete taps
+
+function vm_registerTapArea() {
+  const tapArea = document.getElementById("vm-tap-area");
+  if (!tapArea) return;
+
+  tapArea.addEventListener("click", () => {
+    VM_TAP_COUNT++;
+
+    // restart timer
+    if (VM_TAP_TIMER) clearTimeout(VM_TAP_TIMER);
+    VM_TAP_TIMER = setTimeout(() => {
+      VM_TAP_COUNT = 0; // reset
+    }, VM_TAP_TIMEOUT);
+
+    if (VM_TAP_COUNT >= VM_TAP_REQUIRED) {
+      VM_TAP_COUNT = 0;
+      VM_ADMIN_MODE = !VM_ADMIN_MODE;
+      vm_setAdminVisible(VM_ADMIN_MODE);
+
+      if (VM_ADMIN_MODE)
+        alert("⚙️ Admin controls visible");
+      else
+        alert("🔒 Admin controls hidden");
+    }
+  });
+}
