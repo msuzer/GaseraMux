@@ -356,6 +356,7 @@ async function chartLoadCSVSeries(filename) {
     }
     
     resetChart();
+    window.liveChart.resetZoom();
     updateChartWithWideRows(rows);
     setChartModeUI("csv");
     renderTrackToggles();
@@ -381,6 +382,7 @@ function switchToLiveMode() {
   window.currentCSV = null;
   setChartModeUI("live");
   resetChart();
+  window.liveChart.resetZoom();
 }
 
 function onSSEEvent(ev) {
