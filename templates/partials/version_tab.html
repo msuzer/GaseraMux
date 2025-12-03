@@ -1,0 +1,74 @@
+<div class="container py-3">
+  <h5 class="mb-3">Version Manager</h5>
+
+  <!-- Local build info -->
+  <div class="card mb-3 shadow-sm">
+    <div class="card-body">
+      <h6 class="card-title d-flex align-items-center justify-content-between">
+        <span id="vm-tap-area">Current Build</span>
+        <span id="vm-build-tag"></span>
+      </h6>
+      <table class="table table-sm mb-0">
+        <tbody id="vm-local-info">
+          <tr>
+            <td colspan="2"><em>Loading...</em></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Remote commits -->
+  <div id="vm-admin-card" class="card mb-3 shadow-sm">
+    <div class="card-body">
+
+      <!-- Header -->
+      <h6 class="card-title mb-2">Available Commits (GitHub)</h6>
+
+      <!-- Commit selector + "Show all commits" button in one row -->
+      <div class="vm-commit-row mb-3">
+        <select id="vm-commit-select" class="form-select form-select-sm">
+          <option value="">Loading...</option>
+        </select>
+        <button id="vm-toggle-stable-btn" class="btn btn-outline-secondary btn-sm flex-shrink-0"
+          onclick="vm_toggleStable()">
+          Show all commits
+        </button>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        <button id="vm-checkout-btn" class="btn btn-primary btn-sm flex-fill flex-sm-grow-0">
+          Switch to this version
+        </button>
+        <button id="vm-rollback-btn" class="btn btn-outline-secondary btn-sm flex-fill flex-sm-grow-0">
+          Rollback
+        </button>
+      </div>
+
+      <!-- Status output -->
+      <div id="vm-status" class="small text-muted mb-1"></div>
+
+      <!-- Last updated + Force Refresh -->
+      <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
+        <div id="vm-last-update" class="small text-secondary fst-italic">
+          🕓 Last updated: not yet
+        </div>
+        <button id="vm-refresh-btn" class="btn btn-outline-secondary btn-sm mt-2 mt-sm-0"
+          title="Force reload from GitHub (60 requests/hr limit)">
+          <span id="vm-refresh-icon">🔄</span>
+          <span id="vm-spinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"
+            aria-hidden="true"></span>
+          Force Refresh
+        </button>
+      </div>
+
+      <!-- Gentle warning -->
+      <small id="vm-warning" class="text-muted fst-italic d-block">
+        ⚠️ Frequent refreshes may hit GitHub’s hourly API limit (60 unauthenticated requests).
+      </small>
+
+    </div>
+  </div>
+
+</div>

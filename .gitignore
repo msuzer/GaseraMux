@@ -1,0 +1,69 @@
+# --------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Backup / temporary files
+*.bak
+*.swp
+*.swo
+*.tmp
+*.old
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Virtual environments
+venv/
+.env/
+env/
+.venv/
+
+# Logs and coverage
+*.log
+*.coverage
+coverage/
+htmlcov/
+*.cover
+
+# PyInstaller builds
+dist/
+build/
+*.spec
+
+# Flask instance data / SQLite dbs
+instance/
+*.db
+
+# VSCode and IDE settings
+.vscode/
+
+# Test artifacts
+*.pytest_cache/
+.cache/
+.tox/
+
+# --------------------------------------------------------------------
+# GaseraMux: Runtime-generated and local-only files
+# --------------------------------------------------------------------
+
+# User preferences (device-specific)
+config/user_prefs.json
+
+# Auto-generated build/version metadata
+version_info.sh
+last_version.txt
+
+# Local GitHub cache data
+cache/
+
+# Runtime / systemd artifacts
+*.pid
+*.sock
+
+# --------------------------------------------------------------------
+# End of GaseraMux local ignore list
+# --------------------------------------------------------------------

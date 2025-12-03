@@ -1,0 +1,185 @@
+/* ==========================================================
+   Gasera Soil Jar Grid Visualization
+   ========================================================== */
+.jar {
+  width: 60px;
+  height: 100px;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.jar:hover {
+  transform: translateY(-5px);
+}
+
+.jar-neck {
+  width: 30px;
+  height: 10px;
+  background: #dee2e6;
+  border-radius: 5px 5px 0 0;
+}
+
+.jar-body {
+  width: 60px;
+  height: 80px;
+  border-radius: 0 0 30px 30px;
+  background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid #adb5bd;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.jar.active .jar-body {
+  background: linear-gradient(to bottom, #f3e2b3 0%, #e2c07f 100%);
+  border-color: #b58933;
+  box-shadow: 0 0 8px rgba(40, 167, 69, 0.5);
+}
+
+.jar.active.paused .jar-body {
+  background: linear-gradient(to bottom, #cfe2ff 0%, #9ec5fe 100%);
+  border-color: #0d6efd;
+  box-shadow: 0 0 10px rgba(13, 110, 253, 0.4);
+}
+
+.jar.sampled .jar-body {
+  background: linear-gradient(to bottom, #d1e7dd 0%, #a7e0b8 100%);
+  border-color: #198754;
+  box-shadow: 0 0 10px rgba(25, 135, 84, 0.4);
+}
+
+.jar.paused .jar-body {
+  background: linear-gradient(to bottom, #cfe2ff 0%, #9ec5fe 100%);
+  border-color: #0d6efd;
+  box-shadow: 0 0 10px rgba(13, 110, 253, 0.4);
+}
+
+.jar.sampling .jar-body {
+  background: #fff3cd; /* solid yellow */
+  border-color: #ffe082;
+  box-shadow: 0 0 12px rgba(255, 193, 7, 0.7);
+  animation: gasFlow 1.5s infinite ease-in-out;
+}
+
+@keyframes gasFlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(25, 135, 84, 0.2); }
+  50% { box-shadow: 0 0 14px rgba(25, 135, 84, 0.6); }
+}
+
+/* Adjust spacing for smaller screens */
+@media (max-width: 767.98px) {
+  .jar {
+    width: 48px;
+    height: 80px;
+  }
+  .jar-body { height: 65px; }
+  .jar-label { font-size: 0.7rem; bottom: 10px; font-size: 0.7rem; padding: 2px 8px; }
+}
+
+.jar-label {
+  position: absolute;
+  top: 50%;                      /* vertically centered */
+  left: 50%;                     /* horizontally centered */
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #212529;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  user-select: none;
+  pointer-events: none;
+  transition: all 0.25s ease;
+}
+
+/* Subtle lift & tint when selected */
+.jar.active .jar-label {
+  background: #f9efd3;           /* light beige/amber background */
+  border-color: #b5893355;       /* subtle brownish border */
+  color: #4a3b1b;                /* dark text for contrast */
+  transform: translate(-50%, -50%) scale(1.03);
+  box-shadow: 0 0 6px rgba(181, 137, 51, 0.3);
+}
+
+/* Sampling jar: readable label background on bright yellow body */
+.jar.sampling .jar-label {
+  background: #fff8dc;            /* pale cream for contrast */
+  border-color: #ffe082aa;        /* soft yellow border */
+  color: #3b2d00;                 /* dark brown text for readability */
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* Label for sampled jars: soft amber backdrop for readability */
+.jar.sampled .jar-label {
+  transform: translate(-50%, -50%) scale(1.05);
+  background: #e8f5e9;
+  border-color: #19875455;
+}
+
+/* Label for paused jars: soft blue backdrop */
+.jar.paused .jar-label {
+  transform: translate(-50%, -50%) scale(1.05);
+  background: #e7f1ff;
+  border-color: #0d6efd55;
+}
+
+#jarGrid {
+  gap: 1.2rem !important;       /* more breathing space */
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Disable grid during run */
+#jarGrid.disabled {
+  pointer-events: none;
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+#gridLockIcon {
+  font-size: 1.2rem;
+  cursor: default;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+#gridLockIcon.unlocked {
+  color: #198754; /* green */
+  transform: scale(1.05);
+}
+
+#gridLockIcon.locked {
+  color: #dc3545; /* red */
+  text-shadow: 0 0 6px rgba(220, 53, 69, 0.4);
+  transform: scale(1.1);
+  animation: lockGlow 1.5s ease-in-out infinite;
+  /* animation: lockPulse 1.2s ease-in-out infinite; */
+}
+
+@keyframes lockPulse {
+  0%, 100% {
+    transform: scale(1.05);
+    text-shadow: 0 0 4px rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    transform: scale(1.2);
+    text-shadow: 0 0 10px rgba(220, 53, 69, 0.6);
+  }
+}
+
+@keyframes lockGlow {
+  0%, 100% {
+    text-shadow: 0 0 6px rgba(220, 53, 69, 0.5),
+                 0 0 12px rgba(220, 53, 69, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(220, 53, 69, 0.7),
+                 0 0 20px rgba(220, 53, 69, 0.5);
+  }
+}

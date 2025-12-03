@@ -1,0 +1,134 @@
+<div class="container-fluid p-3">
+
+    <div class="row g-3 text-center justify-content-center align-items-stretch mb-4">
+    <!-- Channel -->
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm py-3 h-100">
+        <div class="card-title fw-semibold text-muted">CHANNEL</div>
+        <div class="circle-wrapper">
+          <div class="info-circle channel-info" id="channelCircle">
+            <span id="channelBadge" class="value">–</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Steps progress -->
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm py-3 h-100">
+        <div class="card-title fw-semibold text-muted">STEPS</div>
+        <div class="circle-wrapper">
+          <svg viewBox="0 0 36 36" class="circular-chart blue">
+            <path class="circle-bg" d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831" />
+            <path id="runCircle" class="circle" stroke-dasharray="0,100"
+              d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831" />
+            <g class="text-layer">
+              <text x="18" y="18" class="percentage" id="runPct">0/0</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Repeats count -->
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm py-3 h-100">
+        <div class="card-title fw-semibold text-muted">REPEATS</div>
+        <div class="circle-wrapper">
+          <svg viewBox="0 0 36 36" class="circular-chart repeat">
+            <path class="circle-bg"
+                  d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831"/>
+            <path id="repeatCircle" class="circle" stroke-dasharray="0,100"
+                  d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831"/>
+            <g class="text-layer">
+              <text x="18" y="18" class="percentage" id="repeatText">0/0</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total progress -->
+    <div class="col-6 col-md-3">
+      <div class="card shadow-sm py-3 h-100">
+        <div class="card-title fw-semibold text-muted">OVERALL</div>
+        <div class="circle-wrapper">
+          <svg viewBox="0 0 36 36" class="circular-chart green">
+            <path class="circle-bg" d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831" />
+            <path id="overallCircle" class="circle" stroke-dasharray="0,100"
+              d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0 -31.831" />
+            <g class="text-layer">
+              <text x="18" y="18" class="percentage" id="overallPct">0%</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- Unified Setup & Control Card -->
+  <div class="card mb-3 shadow-sm">
+    <div class="card-header py-2"><span class="small fw-semibold text-muted">Setup & Control</span></div>
+    <div class="card-body">
+      <form id="configForm" class="config-row row g-3 justify-content-center align-items-start">
+        <div class="col-12 col-md-auto inputs-group d-flex flex-wrap justify-content-center gap-3 gap-md-4">
+          <div class="input-group-sm d-flex flex-column input-block">
+            <label class="form-label mb-0 small">Measurement (sec)</label>
+            <input id="cfgMeasure" type="number" class="form-control form-control-sm" value="300" min="10" max ="3600" step ="10">
+          </div>
+          <div class="input-group-sm d-flex flex-column input-block">
+            <label class="form-label mb-0 small">Pause (sec)</label>
+            <input id="cfgPause" type="number" class="form-control form-control-sm" value="300" min="10" max="1800" step="10">
+          </div>
+          <div class="input-group-sm d-flex flex-column input-block">
+            <label class="form-label mb-0 small">Repeat Count</label>
+            <input id="cfgRepeat" type="number" class="form-control form-control-sm" value="1" min="1" max="100" step="1">
+          </div>
+        </div>
+        <div class="col-12 col-md-auto toggles-group d-flex flex-column gap-2">
+          <div class="form-check form-switch toggle-pill m-0">
+            <input id="cfgBuzzer" class="form-check-input" type="checkbox" unchecked>
+            <label class="form-check-label small text-nowrap" for="cfgBuzzer">Buzzer</label>
+          </div>
+          <div class="form-check form-switch toggle-pill m-0">
+            <input id="cfgOnlineMode" class="form-check-input" type="checkbox" checked>
+            <label class="form-check-label small text-nowrap" for="cfgOnlineMode">Save on Gasera</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="d-flex justify-content-center flex-wrap gap-3 mt-2 pt-2 border-top">
+            <button type="button" id="btnStart" class="btn btn-success btn-lg px-5">Start</button>
+            <button type="button" id="btnAbort" class="btn btn-danger btn-lg px-5" disabled>Abort</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Channel selection -->
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <span>Channel Selection</span>
+        <i id="gridLockIcon" class="bi bi-unlock text-success" title="Grid unlocked"></i>
+      </div>
+
+      <div class="btn-group btn-group-sm">
+        <button id="btnAll" class="btn btn-outline-secondary" type="button">Select All</button>
+        <button id="btnNone" class="btn btn-outline-secondary" type="button">Deselect All</button>
+        <button id="btnInvert" class="btn btn-outline-secondary" type="button">Invert</button>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div id="jarGrid" class="d-flex flex-wrap gap-3 justify-content-start"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/home_tab_core.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/home_tab_visual.js') }}" defer></script>

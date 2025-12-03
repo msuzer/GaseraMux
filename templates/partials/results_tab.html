@@ -1,0 +1,92 @@
+<div class="row justify-content-center mb-4">
+  <div class="col-md-10">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span id="liveNotice" class="fw-semibold" role="status" aria-live="polite">Live Mode</span>
+        <div class="d-flex align-items-center gap-3">
+          <button class="btn btn-sm btn-outline-primary" title="Save Chart Screenshot" onclick="downloadImage()">Save
+            Image</button>
+        </div>
+      </div>
+      <div id="liveChartContainer" class="card-body">
+        <canvas id="liveChart" height="150"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row justify-content-center mb-3">
+  <div class="col-md-10">
+    <div class="card card-body" id="trackTogglePanel">
+      <h6 class="mb-3">Toggle Gas Components</h6>
+      <div id="trackToggles" class="d-flex flex-wrap gap-3"></div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/results_tab.js') }}" defer></script>
+
+<!-- ========================================= -->
+<!-- Measurement Logs Panel -->
+<!-- ========================================= -->
+<div class="row justify-content-center mt-4">
+  <div class="col-md-10">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Measurement Logs</span>
+        <button class="btn btn-sm btn-outline-primary" onclick="refreshLogs()">Refresh</button>
+      </div>
+
+      <div class="card-body">
+        <div id="logListLoading" class="text-muted small mb-2">Loading logs…</div>
+
+        <table class="table table-sm table-hover align-middle" id="logTable">
+          <thead class="table-light">
+            <tr>
+              <th>Filename</th>
+              <th class="col-size">Size</th>
+              <th class="col-action">Get</th>
+              <th class="col-action">Show</th>
+              <th class="col-action">Delete</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
+
+        <div id="logPagination" class="mt-2 text-center d-flex justify-content-center align-items-center gap-2">
+
+          <button id="firstPage" class="btn btn-sm btn-outline-secondary">
+            « First
+          </button>
+
+          <button id="prevPage" class="btn btn-sm btn-outline-secondary">
+            ‹ Prev
+          </button>
+
+          <span id="pageInfo" class="mx-2 fw-bold"></span>
+
+          <button id="nextPage" class="btn btn-sm btn-outline-secondary">
+            Next ›
+          </button>
+
+          <button id="lastPage" class="btn btn-sm btn-outline-secondary">
+            Last »
+          </button>
+
+        </div>
+
+
+        <div id="storageInfo" class="small text-muted mt-3" role="status" aria-live="polite">
+          Checking storage…
+        </div>
+
+        <div id="noLogsMsg" class="text-muted small">
+          No log files found.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Load logs panel JS -->
+<script src="{{ url_for('static', filename='js/logs_panel.js') }}" defer></script>

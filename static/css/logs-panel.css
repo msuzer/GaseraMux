@@ -1,0 +1,8 @@
+/* ==========================================================
+   Logs Panel — Results Tab Log Table
+   (CSS cleanup: visibility now controlled purely by JS)
+   ========================================================== */
+
+/* Column widths */
+#logTable th.col-size { width: 120px; }
+#logTable th.col-action { width: 70px; }

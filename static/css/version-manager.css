@@ -1,0 +1,57 @@
+/* ==========================================================
+   Version Manager Tab Styles
+   ========================================================== */
+
+#vm-last-update {
+  font-size: 0.85rem;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+}
+
+#vm-last-update::before {
+  margin-right: 0.25rem;
+}
+
+#vm-refresh-btn {
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+#vm-status + div {
+  margin-top: 0.25rem !important;
+}
+
+#vm-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* Commit selector row */
+.vm-commit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+#vm-commit-select {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+/* Responsive stacking */
+@media (max-width: 576px) {
+  #vm-last-update,
+  #vm-refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  #vm-refresh-btn {
+    margin-top: 0.3rem;
+  }
+}
