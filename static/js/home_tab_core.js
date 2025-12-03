@@ -144,6 +144,28 @@ function applyPhase(phase) {
   }
 
   btnAbort.disabled = !btnStart.disabled;
+
+  // Lock measurement config inputs when measurement is active
+  const isRunning = window.isActivePhase(phase);
+  const measureInput = document.getElementById("cfgMeasure");
+  const pauseInput = document.getElementById("cfgPause");
+  const repeatInput = document.getElementById("cfgRepeat");
+  
+  if (measureInput) {
+    measureInput.disabled = !!isRunning;
+    if (isRunning) measureInput.title = "Disabled during measurement";
+    else measureInput.removeAttribute("title");
+  }
+  if (pauseInput) {
+    pauseInput.disabled = !!isRunning;
+    if (isRunning) pauseInput.title = "Disabled during measurement";
+    else pauseInput.removeAttribute("title");
+  }
+  if (repeatInput) {
+    repeatInput.disabled = !!isRunning;
+    if (isRunning) repeatInput.title = "Disabled during measurement";
+    else repeatInput.removeAttribute("title");
+  }
 }
 
 // ============================================================
@@ -253,7 +275,7 @@ function SSEHandler(d) {
     if (phaseChanged) {
       applyPhase(newPhase);
       window.updateJarColors?.(ch, newPhase);
-      window.isMeasurementRunning = window.isActivePhase ? window.isActivePhase(newPhase) : (newPhase === "MEASURING" || newPhase === "PAUSED" || newPhase === "SWITCHING" || newPhase === "HOMING");
+      window.isMeasurementRunning = window.isActivePhase(newPhase);
       window.updateGridLock?.();
 
       if (window.isActivePhase(newPhase)) {

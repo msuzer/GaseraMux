@@ -113,17 +113,26 @@ window.updateGridLock = function () {
   const grid = document.getElementById("jarGrid");
   const icon = document.getElementById("gridLockIcon");
   const locked = window.isMeasurementRunning;
+  const btnAll = document.getElementById("btnAll");
+  const btnNone = document.getElementById("btnNone");
+  const btnInvert = document.getElementById("btnInvert");
 
   if (locked) {
     grid.classList.add("locked");
     icon.classList.remove("bi-unlock", "unlocked");
     icon.classList.add("bi-lock", "locked");
     icon.title = "Grid locked during measurement";
+    if (btnAll) btnAll.disabled = true;
+    if (btnNone) btnNone.disabled = true;
+    if (btnInvert) btnInvert.disabled = true;
   } else {
     grid.classList.remove("locked");
     icon.classList.remove("bi-lock", "locked");
     icon.classList.add("bi-unlock", "unlocked");
     icon.title = "Grid unlocked";
+    if (btnAll) btnAll.disabled = false;
+    if (btnNone) btnNone.disabled = false;
+    if (btnInvert) btnInvert.disabled = false;
   }
 };
 
