@@ -7,23 +7,9 @@
 // Toast Notifications
 // ============================================================
 function showAlert(message, type = "info") {
-  // Persist dismissal within current measurement cycle only
-  const ALERT_SESSION_KEY = "dismissedAlerts";
-  const idKey = `${type}:${message}`;
-  let dismissed = {};
-  try {
-    dismissed = JSON.parse(sessionStorage.getItem(ALERT_SESSION_KEY) || "{}");
-  } catch { }
+  const isError = type === "warning" || type === "danger";
 
-  // Check if this specific alert was dismissed in current cycle
-  const currentCycle = sessionStorage.getItem("measurementCycle") || "0";
-  const dismissKey = `${currentCycle}:${idKey}`;
-
-  if (dismissed[dismissKey]) {
-    return; // already dismissed in this cycle
-  }
-
-  // remove any existing alert first
+  // Remove existing alert
   const existing = document.getElementById("centerToast");
   if (existing) existing.remove();
 
@@ -46,18 +32,23 @@ function showAlert(message, type = "info") {
 
   document.body.appendChild(alertBox);
 
-  // fade in
+  // Fade in
   requestAnimationFrame(() => alertBox.classList.add("show"));
 
-  // manual dismiss
+  // Errors auto-fade after 5 seconds; summaries stay until clicked
+  if (isError) {
+    setTimeout(() => {
+      if (alertBox.parentElement) {
+        alertBox.classList.remove("show");
+        alertBox.addEventListener("transitionend", () => alertBox.remove());
+      }
+    }, 5000);
+  }
+
+  // Manual dismiss (click anytime)
   alertBox.addEventListener("click", () => {
     alertBox.classList.remove("show");
     alertBox.addEventListener("transitionend", () => alertBox.remove());
-    // remember dismissal for this measurement cycle
-    dismissed[dismissKey] = true;
-    try {
-      sessionStorage.setItem(ALERT_SESSION_KEY, JSON.stringify(dismissed));
-    } catch { }
   });
 }
 

@@ -132,8 +132,30 @@ function startMeasurement() {
     body: JSON.stringify(collectPrefsData())
   })
     .then(r => r.json())
-    .then(j => { if (!j.ok) console.warn("[MEAS] Start error:", j.message); })
-    .catch(e => console.warn("[MEAS] Start failed:", e));
+    .then(j => {
+      if (!j.ok) {
+        // Show error message to user
+        window.showAlert?.(j.message || "Failed to start measurement", "warning");
+        
+        // Reset button to enabled state
+        btnStart.textContent = "Start Measurement";
+        btnStart.classList.replace("btn-warning", "btn-success");
+        btnStart.disabled = false;
+        
+        console.warn("[MEAS] Start error:", j.message);
+      }
+    })
+    .catch(e => {
+      // Handle network errors
+      window.showAlert?.("Network error: " + (e.message || "Unknown error"), "danger");
+      
+      // Reset button to enabled state
+      btnStart.textContent = "Start Measurement";
+      btnStart.classList.replace("btn-warning", "btn-success");
+      btnStart.disabled = false;
+      
+      console.warn("[MEAS] Start failed:", e);
+    });
 }
 
 btnAbort.addEventListener("click", () => {
@@ -146,8 +168,16 @@ btnAbort.addEventListener("click", () => {
     onConfirm: () => {
       safeFetch(API_PATHS?.measurement?.abort, { method: "POST" })
         .then(r => r.json())
-        .then(j => { if (!j.ok) console.warn("[MEAS] Abort error:", j.message); })
-        .catch(e => console.warn("[MEAS] Abort failed:", e));
+        .then(j => {
+          if (!j.ok) {
+            window.showAlert?.(j.message || "Failed to abort measurement", "warning");
+            console.warn("[MEAS] Abort error:", j.message);
+          }
+        })
+        .catch(e => {
+          window.showAlert?.("Abort error: " + (e.message || "Unknown error"), "danger");
+          console.warn("[MEAS] Abort failed:", e);
+        });
     }
   });
 });
