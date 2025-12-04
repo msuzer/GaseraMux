@@ -219,37 +219,6 @@ function getMeasurementTiming() {
 // Expose globally for use in other modules
 window.getMeasurementTiming = getMeasurementTiming;
 
-function updateButtonText(btnElement, formattedTime = null) {
-    if (!btnElement || !btnElement.dataset.phase) return;
-    
-    const currentCh = window.latestCurrentChannel ?? 0;
-    const nextCh = window.latestNextChannel ?? 1;
-    const phase = btnElement.dataset.phase;
-    
-    // Get phase text
-    let phaseText = "";
-    if (phase === "MEASURING") {
-        phaseText = `Measuring Ch${currentCh + 1}`;
-    } else if (phase === "PAUSED") {
-        phaseText = `Paused Ch${currentCh + 1}`;
-    } else if (phase === "HOMING") {
-        phaseText = `Homing`;
-    } else if (phase === "SWITCHING") {
-        phaseText = `Switching Ch${currentCh + 1} → Ch${nextCh + 1}`;
-    }
-    
-    // Append timer if provided
-    if (formattedTime) {
-        btnElement.textContent = `${phaseText} • ${formattedTime}`;
-    } else if (phaseText) {
-        btnElement.textContent = phaseText;
-    }
-}
-
-// Cache DOM elements for timer updates
-let cachedDisplay = null;
-let cachedBtnStart = null;
-
 function updateETTTDisplay() {
     // Lazy cache DOM elements
     if (!cachedDisplay) cachedDisplay = document.getElementById("etttDisplay");
@@ -261,7 +230,7 @@ function updateETTTDisplay() {
     if (cachedDisplay) cachedDisplay.textContent = formattedTime;
     
     // Update button text with phase + channel + timing
-    if (cachedBtnStart) updateButtonText(cachedBtnStart, formattedTime);
+    if (cachedBtnStart) window.updateButtonText?.(cachedBtnStart, formattedTime);
 }
 
 function startETTTTimer(total) {
@@ -290,17 +259,10 @@ function stopETTTTimer() {
 
 // ---------------------------------------------------------------------
 // Global SSE subscription (footer reacts to every phase change)
-// ---------------------------------------------------------------------
-function isActivePhase(phase) {
-    return phase === "MEASURING" || phase === "PAUSED" || phase === "SWITCHING" || phase === "HOMING";
-}
-
-// Expose for other modules
-window.isActivePhase = isActivePhase;
-
+// -----------------------------------------------------------------------
 if (window.GaseraHub) {
     window.GaseraHub.subscribe(d => {
-        const phase = d.phase || "IDLE";
+        const phase = d.phase || window.PHASE.IDLE;
         
         if (d.connection) {
             window.updateFooterStatus(!!d.connection.online);
@@ -308,8 +270,8 @@ if (window.GaseraHub) {
         }
         
         // ET/TT timer management - start on SWITCHING (includes homing) to stay in sync
-        const shouldStartTimer = isActivePhase(phase) && !etttTimer && d.tt_seconds;
-        const shouldStopTimer = !isActivePhase(phase) && (etttTimer || document.getElementById("timingDisplay")?.style.display !== "none");
+        const shouldStartTimer = window.isActivePhase(phase) && !etttTimer && d.tt_seconds;
+        const shouldStopTimer = !window.isActivePhase(phase) && (etttTimer || document.getElementById("timingDisplay")?.style.display !== "none");
         
         if (shouldStartTimer) {
             startETTTTimer(d.tt_seconds);

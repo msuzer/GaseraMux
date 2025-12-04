@@ -31,7 +31,20 @@
   </div>
 
   <script src="{{ url_for('static', filename='js/core_index.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/phase_utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/version_tab.js') }}" defer></script>
+  
+  <!-- Home tab modules (load home_tab_dom first for DOM cache) -->
+  <script src="{{ url_for('static', filename='js/home_tab_dom.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/home_tab_notifications.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/home_tab_jar_grid.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/home_tab_preferences.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/home_tab_visual.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/home_tab_core.js') }}" defer></script>
+  
+  <!-- Results tab modules -->
+  <script src="{{ url_for('static', filename='js/results_tab.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/logs_panel.js') }}" defer></script>
 
   <div class="row justify-content-center">
     <div class="col-lg-8">
