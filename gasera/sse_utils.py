@@ -4,21 +4,45 @@ from typing import Dict, Any, Tuple
 def build_sse_state(progress: Dict[str, Any] | None,
                     connection: Dict[str, Any] | None,
                     live_data: Dict[str, Any] | None,
-                    usb_state: Tuple[bool, str | None] | None) -> Dict[str, Any]:
+                    usb_mounted: bool | None = None,
+                    buzzer_enabled: bool | None = None) -> Dict[str, Any]:
     """
-    Normalize and assemble SSE state payload.
-    Ensures live_data structure is consistent and attaches USB info.
-    Note: progress, connection, and live_data are already copies from get_snapshots()
+    Assemble SSE state payload from component snapshots.
+    
+    Strategy: Always send progress (changes every 0.5-1s), only send other fields when changed.
+    - Progress: Always included (phase, percent, channel, etc. - changes frequently)
+    - Connection, live_data, USB, buzzer: Only included when changed (rare events)
+    
+    Frontend uses `?? null` or `if (field)` checks to handle missing fields.
+    Payload-level deduplication prevents redundant sends.
+    
+    Args:
+        progress: Progress dict from acquisition engine (always sent)
+        connection: Connection dict or None if unchanged
+        live_data: Live measurement data or None if unchanged
+        usb_state: USB state tuple or None if unchanged
+        buzzer_enabled: Buzzer state or None if unchanged
+    
+    Returns:
+        State dict with progress + any changed fields
     """
-    # Reuse the progress dict directly (already a copy from get_snapshots)
-    state = progress or {}
-    state["connection"] = connection or {}
-    state["live_data"] = live_data or {"timestamp": None, "components": []}
-
-    if usb_state:
-        mounted, event = usb_state
-        state["usb_mounted"] = mounted
-        if event:
-            state["usb_event"] = event
+    # Always include progress (changes frequently, frontend needs it)
+    state = progress.copy() if progress else {}
+    
+    # Only include connection when present (changed)
+    if connection is not None:
+        state["connection"] = connection
+    
+    # Only include live_data when present (new measurement)
+    if live_data is not None and live_data:  # Non-empty dict
+        state["live_data"] = live_data
+    
+    # Only include USB state when present (mount/unmount event)
+    if usb_mounted is not None:
+        state["usb_mounted"] = usb_mounted
+        
+    # Only include buzzer when changed
+    if buzzer_enabled is not None:
+        state["buzzer_enabled"] = buzzer_enabled
 
     return state

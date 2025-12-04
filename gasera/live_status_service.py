@@ -8,9 +8,8 @@ from system.log_utils import debug, warn, error
 from gasera.controller import gasera
 from gasera.acquisition_engine import AcquisitionEngine
 
-# Snapshots exposed to routes
+# High-frequency data snapshots (progress + live measurements)
 latest_progress: Dict[str, Any] = {"phase": "IDLE", "current_channel": 0, "repeat_index": 0}
-latest_connection: Dict[str, Any] = {"online": False}
 latest_live_data: Dict[str, Any] = {}
 
 _lock = threading.Lock()  # Protect access to latest_* globals
@@ -24,7 +23,6 @@ def init(engine: AcquisitionEngine) -> None:
     global _engine
     _engine = engine
     engine.subscribe(_on_progress_update)
-
 
 def _on_progress_update(progress) -> None:
     global latest_progress
@@ -64,14 +62,10 @@ def stop_background_updater() -> None:
 
 
 def _background_status_updater() -> None:
-    global latest_connection, latest_live_data
+    """Background thread for high-frequency data: progress updates and live gas measurements."""
+    global latest_live_data
     while not _updater_stop_event.is_set():
         try:
-            conn = {"online": gasera.is_connected()}
-            
-            with _lock:
-                latest_connection = conn
-
             if _engine and _engine.is_running():
                 result = gasera.acon_proxy()
                 if isinstance(result, dict) and result.get("components"):
@@ -106,11 +100,10 @@ def _background_status_updater() -> None:
                         ],
                     }
 
-                    with _lock:
-                        latest_live_data = live_data
-
                     try:
-                        _engine.on_live_data(live_data)
+                        is_new = _engine.on_live_data(live_data)
+                        with _lock:
+                            latest_live_data = live_data if is_new else {}
                     except Exception as e:
                         warn(f"[live] on_live_data error: {e}")
                 else:
@@ -120,7 +113,7 @@ def _background_status_updater() -> None:
             error(f"[live] background updater error: {e}")
         time.sleep(SSE_UPDATE_INTERVAL)
 
-
-def get_snapshots() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+def get_live_snapshots() -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Get high-frequency data snapshots: progress and live measurements."""
     with _lock:
-        return latest_progress.copy(), latest_connection.copy(), latest_live_data.copy()
+        return latest_progress.copy(), latest_live_data.copy()

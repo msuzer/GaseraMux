@@ -5,7 +5,6 @@ from gasera.acquisition_engine import AcquisitionEngine
 from gpio.pneumatic_mux import build_default_cascaded_mux
 from gpio.pin_assignments import OC1_PIN, OC2_PIN, OC3_PIN, OC4_PIN, OC5_PIN
 from system.log_utils import verbose, debug, info, warn, error
-from gasera.controller import gasera
 from gasera.trigger_monitor import TriggerMonitor
 from gasera import gas_info
 from gasera.sse_utils import build_sse_state
@@ -13,8 +12,14 @@ from gasera.live_status_service import (
     init as live_init,
     start_background_updater,
     stop_background_updater,
-    get_snapshots,
+    get_live_snapshots,
 )
+from gasera.device_status_service import (
+    get_device_snapshots,
+    update_all_device_status,
+    clear_buzzer_change,
+)
+
 import time, json
 from .storage_utils import usb_mounted, check_usb_change, get_log_directory, get_free_space, get_total_space, list_log_files, safe_join_in_logdir
 import os
@@ -87,17 +92,48 @@ def abort_measurement() -> tuple[Response, int]:
 # ----------------------------------------------------------------------
 @gasera_bp.route("/api/measurement/events")
 def sse_events() -> Response:
-    """SSE stream emitting current progress/phase."""
+    """SSE stream merging high-frequency (progress, live data) and low-frequency (device status) updates."""
     def event_stream():
         last_payload = None
         last_beat = time.monotonic()
+        
+        last_live_data = None
+        last_connection = None
+        last_usb_mounted = None
 
         while True:
             try:
-                # Snapshot current status from service
-                lp, lc, ld = get_snapshots()
-                usb_state = check_usb_change()
-                state = build_sse_state(lp, lc, ld, usb_state)
+                update_all_device_status()
+                lp, ld = get_live_snapshots()
+                lc, lu, lb = get_device_snapshots()
+                                
+                # Connection: compare online status
+                connection_changed = lc != last_connection
+                connection_to_send = lc if connection_changed else None
+                
+                # USB: compare state mounted
+                usb_changed = lu != last_usb_mounted
+                usb_to_send = lu if usb_changed else None
+                
+                # Live data: compare timestamp (deduplication already handles this)
+                live_data_changed = ld != last_live_data
+                live_data_to_send = ld if live_data_changed else None
+                
+                if connection_changed:
+                    last_connection = lc
+                if usb_changed:
+                    last_usb_mounted = lu
+                if live_data_changed:
+                    last_live_data = ld
+
+                # Build state with only changed fields
+                state = build_sse_state(
+                    lp, 
+                    connection_to_send, 
+                    live_data_to_send, 
+                    usb_to_send, 
+                    lb
+                )
 
                 payload = json.dumps(state, sort_keys=True)
                 if payload != last_payload:
@@ -105,6 +141,11 @@ def sse_events() -> Response:
                     yield ":\n\n"
                     last_payload = payload
                     last_beat = time.monotonic()
+                    
+                    # Clear buzzer change flag after successful send
+                    if lb is not None:
+                        clear_buzzer_change()
+                                        
                     verbose(f"[SSE] sent update: {state}")
                 elif time.monotonic() - last_beat > 10:
                     yield ": keep-alive\n\n"
