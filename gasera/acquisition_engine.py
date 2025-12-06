@@ -498,11 +498,14 @@ class AcquisitionEngine:
         return False
 
     def on_live_data(self, live_data):
+        """Process live data. Returns True if data was new (not duplicate), False otherwise."""
         if not live_data or not live_data.get("components"):
-            return
+            return False
 
         if self._is_duplicate_live_result(live_data):
-            return
+            return False
 
         if self.logger:
             self.logger.write_measurement(live_data)
+        
+        return True

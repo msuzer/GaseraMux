@@ -7,16 +7,16 @@ const MAX_POINTS = 100;
 
 let trackVisibility = {};
 
-// Gas colors tuned for brighter, higher-saturation palette (old app style)
-const GAS_COLORS = {
-  // Core gases seen in screenshot
-  "Ammonia (NH₃, 7664-41-7)": "#1f77b4",        // vivid blue
-  "Carbon Dioxide (CO₂, 124-38-9)": "#ff6384",  // bright pink/red
-  "Methane (CH₄, 74-82-8)": "#ff9f40",          // bright orange
-  "Nitrous Oxide (N₂O, 10024-97-2)": "#ffcd56", // bright yellow
-  "Water Vapor (H₂O, 7732-18-5)": "#2ca02c",    // vivid green/teal
-
-  // Additional typical gases (kept vivid Chart.js-like palette)
+// ============================================================
+// Gas colors - loaded from backend
+// ============================================================
+// Fallback gas colors in case backend fetch fails
+const GAS_COLORS_FALLBACK = {
+  "Ammonia (NH₃, 7664-41-7)": "#1f77b4",
+  "Carbon Dioxide (CO₂, 124-38-9)": "#ff6384",
+  "Methane (CH₄, 74-82-8)": "#ff9f40",
+  "Nitrous Oxide (N₂O, 10024-97-2)": "#ffcd56",
+  "Water Vapor (H₂O, 7732-18-5)": "#2ca02c",
   "Carbon Monoxide (CO, 630-08-0)": "#d62728",
   "Sulfur Dioxide (SO₂, 7446-09-5)": "#e377c2",
   "Oxygen (O₂, 7782-44-7)": "#7f7f7f",
@@ -25,9 +25,27 @@ const GAS_COLORS = {
   "Methanol (CH₃OH, 67-56-1)": "#a05d56"
 };
 
+let GAS_COLORS = {};
+
+// Load gas colors from backend
+async function loadGasColors() {
+  try {
+    const res = await safeFetch(API_PATHS?.gasera?.gas_colors);
+    if (res.ok) {
+      GAS_COLORS = await res.json();
+    } else {
+      console.warn("[results_tab] Failed to load gas colors, using fallback");
+      GAS_COLORS = GAS_COLORS_FALLBACK;
+    }
+  } catch (err) {
+    console.warn("[results_tab] Error loading gas colors:", err);
+    GAS_COLORS = GAS_COLORS_FALLBACK;
+  }
+}
+
 window.chartMode = "live";   // "live" | "csv"
 window.currentCSV = null;
-window.lastSSEPhase = "IDLE";
+window.lastSSEPhase = window.PHASE?.IDLE || "IDLE";
 
 window.chartMeta = {
   phase: [],
@@ -320,7 +338,7 @@ function parseWideCSV(text) {
 
 
 async function chartLoadCSVSeries(filename) {
-  if (window.lastSSEPhase !== "IDLE" && window.lastSSEPhase !== "ABORTED") {
+  if (window.lastSSEPhase !== window.PHASE.IDLE && window.lastSSEPhase !== window.PHASE.ABORTED) {
     window.showConfirmModal({
       title: "Device Busy",
       message: "Device is measuring. Cannot show CSV during live measurement.",
@@ -356,6 +374,7 @@ async function chartLoadCSVSeries(filename) {
     }
     
     resetChart();
+    window.liveChart.resetZoom();
     updateChartWithWideRows(rows);
     setChartModeUI("csv");
     renderTrackToggles();
@@ -381,13 +400,14 @@ function switchToLiveMode() {
   window.currentCSV = null;
   setChartModeUI("live");
   resetChart();
+  window.liveChart.resetZoom();
 }
 
 function onSSEEvent(ev) {
   window.lastSSEPhase = ev.phase;
 
   // Auto return to live when new measurement begins
-  if (ev.phase === "MEASURING" && window.chartMode === "csv") {
+  if (ev.phase === window.PHASE.MEASURING && window.chartMode === "csv") {
     switchToLiveMode();
   }
 
@@ -398,7 +418,8 @@ function onSSEEvent(ev) {
 }
 
 // Subscribe to SSE
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadGasColors();
   window.GaseraHub?.subscribe(onSSEEvent);
   renderTrackToggles();
   // console.log("[results_livechart] Subscribed to SSE for live updates");

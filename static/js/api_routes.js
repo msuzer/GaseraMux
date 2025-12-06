@@ -13,13 +13,15 @@ API_PATHS = {
     "settings": {
         "read": "/system/prefs",
         "update": "/system/prefs",
-        "buzzer": "/system/buzzer",
-        "online_mode": "/system/online_mode"
+        "buzzer": "/system/buzzer"
     },
     "version": {
         "local": "/system/version/local",
         "github": "/system/version/github",
         "checkout": "/system/version/checkout",
         "rollback": "/system/version/rollback"
+    },
+    "gasera": {
+        "gas_colors": "/gasera/api/gas_colors"
     }
 }

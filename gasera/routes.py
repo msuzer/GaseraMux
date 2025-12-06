@@ -5,16 +5,21 @@ from gasera.acquisition_engine import AcquisitionEngine
 from gpio.pneumatic_mux import build_default_cascaded_mux
 from gpio.pin_assignments import OC1_PIN, OC2_PIN, OC3_PIN, OC4_PIN, OC5_PIN
 from system.log_utils import verbose, debug, info, warn, error
-from gasera.controller import gasera
 from gasera.trigger_monitor import TriggerMonitor
 from gasera import gas_info
-from gasera.sse_utils import build_sse_state
+from gasera.sse_utils import SseDeltaTracker
 from gasera.live_status_service import (
     init as live_init,
     start_background_updater,
     stop_background_updater,
-    get_snapshots,
+    get_live_snapshots,
 )
+from gasera.device_status_service import (
+    get_device_snapshots,
+    update_all_device_status,
+    clear_buzzer_change,
+)
+
 import time, json
 from .storage_utils import usb_mounted, check_usb_change, get_log_directory, get_free_space, get_total_space, list_log_files, safe_join_in_logdir
 import os
@@ -87,17 +92,20 @@ def abort_measurement() -> tuple[Response, int]:
 # ----------------------------------------------------------------------
 @gasera_bp.route("/api/measurement/events")
 def sse_events() -> Response:
-    """SSE stream emitting current progress/phase."""
+    """SSE stream merging high-frequency (progress, live data) and low-frequency (device status) updates."""
     def event_stream():
         last_payload = None
         last_beat = time.monotonic()
+        tracker = SseDeltaTracker()
 
         while True:
             try:
-                # Snapshot current status from service
-                lp, lc, ld = get_snapshots()
-                usb_state = check_usb_change()
-                state = build_sse_state(lp, lc, ld, usb_state)
+                update_all_device_status()
+                lp, ld = get_live_snapshots()
+                lc, lu, lb = get_device_snapshots()
+
+                # Build state with only changed fields using helper
+                state = tracker.build(lp, ld, lc, lu, lb)
 
                 payload = json.dumps(state, sort_keys=True)
                 if payload != last_payload:
@@ -105,6 +113,11 @@ def sse_events() -> Response:
                     yield ":\n\n"
                     last_payload = payload
                     last_beat = time.monotonic()
+                    
+                    # Clear buzzer change flag after successful send
+                    if "buzzer_enabled" in state:
+                        clear_buzzer_change()
+                                        
                     verbose(f"[SSE] sent update: {state}")
                 elif time.monotonic() - last_beat > 10:
                     yield ": keep-alive\n\n"

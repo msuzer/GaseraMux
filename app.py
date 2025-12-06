@@ -1,6 +1,6 @@
 from flask import Flask, render_template
 import sys
-import system.log_utils as log
+from system.log_utils import debug
 from gasera.tcp_client import init_tcp_client
 
 DEFAULT_GASERA_IP = "192.168.0.100"
@@ -8,10 +8,10 @@ DEFAULT_GASERA_IP = "192.168.0.100"
 target_ip = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_GASERA_IP
 
 tcp_client = init_tcp_client(target_ip)
-log.info(f"[GaseraMux] TCP target: {target_ip}:8888")
+debug(f"[GaseraMux] TCP target: {target_ip}:8888")
 
 from buzzer.buzzer_facade import buzzer
-log.info("starting service", version="1.0.0")
+debug("starting service", version="1.0.0")
 buzzer.play("power_on")
 
 app = Flask(__name__)
@@ -33,13 +33,13 @@ def index():
 def cleanup():
     """Clean up resources before exit."""
     from gpio.gpio_control import gpio
-    log.info("Cleaning up resources...")
+    debug("Cleaning up resources...")
     # gpio.cleanup()
-    log.info("Cleanup complete")
+    debug("Cleanup complete")
 
 def signal_handler(signum, frame):
     """Handle termination signals."""
-    log.info(f"Received signal {signum}")
+    debug(f"Received signal {signum}")
     cleanup()
     exit(0)
 

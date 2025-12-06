@@ -160,7 +160,7 @@ def build_default_cascaded_mux(
     mux2 = PneumaticMux("MUX2", MuxPins(mux2_home_pin, mux2_next_pin),
                         timing, max_channels)
 
-    info("[CMUX] built",
+    debug("[CMUX] built",
          mux1_home=mux1_home_pin, mux1_next=mux1_next_pin,
          mux2_home=mux2_home_pin, mux2_next=mux2_next_pin,
          max_channels=max_channels)

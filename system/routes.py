@@ -241,23 +241,3 @@ def set_buzzer_state() -> tuple[Response, int]:
     except Exception as e:
         error(f"[BUZZER] set_buzzer_state error: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
-
-# ----------------------------------------------------------------------
-# POST set online mode (SONL)
-# ----------------------------------------------------------------------
-@system_bp.route("/online_mode", methods=["POST"])
-def set_online_mode() -> tuple[Response, int]:
-    """Enable/disable saving results on Gasera (SONL command). Body: { "enabled": true|false }"""
-    data = request.get_json(force=True)
-    if not data or "enabled" not in data:
-        return jsonify({"ok": False, "error": "Missing 'enabled' field"}), 400
-
-    enabled = bool(data["enabled"])
-    try:
-        # Persist preference only; device will apply before next measurement start
-        prefs.update_from_dict({KEY_ONLINE_MODE_ENABLED: enabled})
-        debug(f"[ONLINE_MODE] preference set to {'enabled' if enabled else 'disabled'} (will apply on measurement start)")
-        return jsonify({"ok": True, "enabled": enabled}), 200
-    except Exception as e:
-        error(f"[ONLINE_MODE] error: {e}")
-        return jsonify({"ok": False, "error": str(e)}), 500

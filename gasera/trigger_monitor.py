@@ -28,16 +28,14 @@ class TriggerMonitor:
     # ------------------------------------------------------------------
     def start(self):
         if getattr(self, "_started", False):
-            from system.log_utils import debug
             debug("[TRIGGER] Already started; skipping duplicate init")
             return
         try:
-            info(f"[TRIGGER] Edge monitoring started on {TRIGGER_PIN}")
+            debug(f"[TRIGGER] Edge monitoring started on {TRIGGER_PIN}")
             gpio.watch(TRIGGER_PIN, self._on_edge, edge="both")
             self._started = True
         except OSError as e:
             if e.errno == 16:
-                from system.log_utils import warn
                 warn(f"[TRIGGER] GPIO already in use; skipping duplicate watcher")
             else:
                 raise
@@ -128,7 +126,7 @@ class TriggerMonitor:
 
     def _handle_long_press(self):
         if not self.engine.is_running():
-            info("[TRIGGER] Long press ignored (no active measurement)")
+            debug("[TRIGGER] Long press ignored (no active measurement)")
             return
         try:
             info("[TRIGGER] Long press → Abort measurement")

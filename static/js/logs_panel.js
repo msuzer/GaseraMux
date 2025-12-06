@@ -80,7 +80,7 @@ function onSSEUpdateEvent(event) {
     window.lastUsbMounted = event.usb_mounted;
   }
 
-  if (event.phase === "IDLE" || event.phase === "ABORTED") {
+  if (event.phase === window.PHASE.IDLE || event.phase === window.PHASE.ABORTED) {
     refresh = true;
   }
 
@@ -184,8 +184,8 @@ function refreshLogs() {
       }
 
       // Safeguard: window.lastSSEPhase may be undefined if results_tab.js hasn't loaded yet
-      const phase = (typeof window.lastSSEPhase === "string") ? window.lastSSEPhase : "IDLE";
-      const isIdle = (phase === "IDLE" || phase === "ABORTED");
+      const phase = (typeof window.lastSSEPhase === "string") ? window.lastSSEPhase : window.PHASE.IDLE;
+      const isIdle = (phase === window.PHASE.IDLE || phase === window.PHASE.ABORTED);
 
       data.files.forEach(entry => {
         const row = document.createElement("tr");
