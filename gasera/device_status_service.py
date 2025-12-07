@@ -12,20 +12,32 @@ latest_connection: Dict[str, Any] = {"online": False}
 latest_usb_mounted: bool = False
 _buzzer_change_pending: bool | None = None
 
+# Compound device status snapshot (for SSE payloads)
+_latest_device_status: Dict[str, Any] = {
+    "connection": {"online": False},
+    "usb": {"mounted": False},
+    "buzzer": {"enabled": False},
+}
+
 _lock = threading.Lock()
 
 
-def get_device_snapshots() -> Tuple[Dict[str, Any], bool | None, bool | None]:
+def get_device_snapshots() -> Dict[str, Any]:
     """
-    Get all device status snapshots in a single locked operation.
-    Returns: (connection, usb_state, buzzer_change)
-    Note: Buzzer change is NOT consumed here; caller must call clear_buzzer_change() after successful send.
+    Get compound device status snapshot.
+    If there is a pending buzzer change, include a per-payload marker under buzzer as `_changed: true`.
+    Caller should clear via `clear_buzzer_change()` after successfully sending a payload that includes this marker.
     """
     with _lock:
-        conn = latest_connection.copy()
-        usb = latest_usb_mounted
-        buzzer = _buzzer_change_pending
-        return conn, usb, buzzer
+        _latest_device_status["connection"] = latest_connection.copy()
+        _latest_device_status["usb"] = {"mounted": latest_usb_mounted}
+        buz_enabled = bool(prefs.get(KEY_BUZZER_ENABLED, False))
+        buz = {"enabled": buz_enabled}
+        if _buzzer_change_pending is not None:
+            buz["_changed"] = True
+        _latest_device_status["buzzer"] = buz
+
+        return _latest_device_status.copy()
 
 def clear_buzzer_change() -> None:
     """Clear the buzzer change flag after it has been successfully sent."""
@@ -33,27 +45,30 @@ def clear_buzzer_change() -> None:
     with _lock:
         _buzzer_change_pending = None
 
-def update_connection_state() -> None:
-    """Update connection state (called by live_status_service background thread)."""
-    global latest_connection
-    conn = {"online": gasera.is_connected()}
+def _update_connection_and_usb(conn_online: bool, usb_mounted: bool) -> None:
+    """Internal: atomically update connection and USB status under a single lock."""
+    global latest_connection, latest_usb_mounted
     with _lock:
-        latest_connection = conn
-
-def set_usb_state(mounted: bool, event: str | None) -> None:
-    """Update USB state (called by storage_utils event monitor)."""
-    global latest_usb_mounted
-    with _lock:
-        latest_usb_mounted = mounted
+        latest_connection = {"online": conn_online}
+        latest_usb_mounted = usb_mounted
+        _latest_device_status["connection"] = latest_connection.copy()
+        _latest_device_status["usb"] = {"mounted": latest_usb_mounted}
 
 def update_all_device_status() -> None:
     """
-    Update all device status: connection and USB.
+    Update connection and USB in one cohesive step for consistent snapshots.
     Called from SSE stream before fetching snapshots.
     """
-    update_connection_state()
-    usb_mounted, usb_event = check_usb_change()
-    set_usb_state(usb_mounted, usb_event)
+    try:
+        conn_online = gasera.is_connected()
+    except Exception:
+        conn_online = False
+    try:
+        usb_mounted, _ = check_usb_change()
+    except Exception:
+        usb_mounted = latest_usb_mounted
+
+    _update_connection_and_usb(conn_online, usb_mounted)
 
 def _on_buzzer_change(key: str, value: Any) -> None:
     """Callback for preference changes to track buzzer state updates."""
@@ -61,6 +76,7 @@ def _on_buzzer_change(key: str, value: Any) -> None:
         global _buzzer_change_pending
         with _lock:
             _buzzer_change_pending = bool(value)
+            _latest_device_status["buzzer"] = {"enabled": bool(value)}
             debug(f"[DEVICE] Buzzer change detected: {value}")
 
 # Register callback for buzzer preference changes

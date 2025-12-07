@@ -260,13 +260,20 @@ function stopETTTTimer() {
 // ---------------------------------------------------------------------
 // Global SSE subscription (footer reacts to every phase change)
 // -----------------------------------------------------------------------
+// Track last-seen values to avoid UI flicker on unrelated updates
+window.lastConnOnline = typeof window.lastConnOnline === "boolean" ? window.lastConnOnline : null;
+
 if (window.GaseraHub) {
     window.GaseraHub.subscribe(d => {
         const phase = d.phase || window.PHASE.IDLE;
         
-        if (d.connection) {
-            window.updateFooterStatus(!!d.connection.online);
-            heartbeatFooter();
+        const online = window.DeviceStatus?.getConnectionOnline(d);
+        if (online !== null) {
+            if (window.lastConnOnline === null || window.lastConnOnline !== online) {
+                window.updateFooterStatus(online);
+                heartbeatFooter();
+                window.lastConnOnline = online;
+            }
         }
         
         // ET/TT timer management - start on SWITCHING (includes homing) to stay in sync

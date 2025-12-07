@@ -8,12 +8,13 @@ from system.log_utils import verbose, debug, info, warn, error
 from gasera.trigger_monitor import TriggerMonitor
 from gasera import gas_info
 from gasera.sse_utils import SseDeltaTracker
+
 from gasera.live_status_service import (
     init as live_init,
     start_background_updater,
-    stop_background_updater,
     get_live_snapshots,
 )
+
 from gasera.device_status_service import (
     get_device_snapshots,
     update_all_device_status,
@@ -21,7 +22,7 @@ from gasera.device_status_service import (
 )
 
 import time, json
-from .storage_utils import usb_mounted, check_usb_change, get_log_directory, get_free_space, get_total_space, list_log_files, safe_join_in_logdir
+from .storage_utils import usb_mounted, get_log_directory, get_free_space, get_total_space, list_log_files, safe_join_in_logdir
 import os
 from flask import send_file
 
@@ -101,21 +102,19 @@ def sse_events() -> Response:
         while True:
             try:
                 update_all_device_status()
-                lp, ld = get_live_snapshots()
-                lc, lu, lb = get_device_snapshots()
+                _progress, _live_data = get_live_snapshots()
+                _device_status = get_device_snapshots()
 
-                # Build state with only changed fields using helper
-                state = tracker.build(lp, ld, lc, lu, lb)
-
+                state = tracker.build(_progress, _live_data, _device_status)
                 payload = json.dumps(state, sort_keys=True)
                 if payload != last_payload:
                     yield f"data: {payload}\n\n"
                     yield ":\n\n"
                     last_payload = payload
                     last_beat = time.monotonic()
-                    
+
                     # Clear buzzer change flag after successful send
-                    if "buzzer_enabled" in state:
+                    if state.get("device_status", {}).get("buzzer", {}).get("_changed"):
                         clear_buzzer_change()
                                         
                     verbose(f"[SSE] sent update: {state}")

@@ -1,6 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Any, Tuple
-
+from typing import Dict, Any
 
 class SseDeltaTracker:
     """
@@ -13,46 +12,36 @@ class SseDeltaTracker:
 
     def __init__(self) -> None:
         self._last_live_data: Dict[str, Any] | None = None
-        self._last_connection: Dict[str, Any] | None = None
-        self._last_usb_mounted: bool | None = None
+        self._last_device_status: Dict[str, Any] | None = None
 
     def build(
         self,
         progress: Dict[str, Any] | None,
         live_data: Dict[str, Any] | None,
-        connection: Dict[str, Any] | None,
-        usb_mounted: bool | None,
-        buzzer_enabled: bool | None,
+        device_status: Dict[str, Any] | None,
     ) -> Dict[str, Any]:
         """Return SSE state including only changed fields along with current progress."""
         # Determine diffs
-        connection_changed = connection is not None and connection != self._last_connection
-        usb_changed = usb_mounted is not None and usb_mounted != self._last_usb_mounted
+        device_changed = device_status is not None and device_status != self._last_device_status
         live_data_changed = bool(live_data) and live_data != self._last_live_data
 
-        if connection_changed:
-            self._last_connection = connection
-        if usb_changed:
-            self._last_usb_mounted = usb_mounted
+        if device_changed:
+            self._last_device_status = device_status
         if live_data_changed:
             self._last_live_data = live_data
 
         # Only include changed snapshots; progress is always included
         return SseDeltaTracker.build_state(
             progress,
-            connection if connection_changed else None,
+            device_status if device_changed else None,
             live_data if live_data_changed else None,
-            usb_mounted if usb_changed else None,
-            buzzer_enabled,
         )
 
     @staticmethod
     def build_state(
         progress: Dict[str, Any] | None,
-        connection: Dict[str, Any] | None,
+        device_status: Dict[str, Any] | None,
         live_data: Dict[str, Any] | None,
-        usb_mounted: bool | None = None,
-        buzzer_enabled: bool | None = None,
     ) -> Dict[str, Any]:
         """
         Assemble SSE state payload from component snapshots.
@@ -65,22 +54,17 @@ class SseDeltaTracker:
         Payload-level deduplication prevents redundant sends.
         """
         # Always include progress (changes frequently, frontend needs it)
-        state = progress.copy() if progress else {}
+        # Snapshot is already copied by get_live_snapshots(); avoid redundant copy here.
+        state = progress or {}
 
-        # Only include connection when present (changed)
-        if connection is not None:
-            state["connection"] = connection
+        # Only include compound device_status when present (changed)
+        if device_status is not None:
+            state["device_status"] = device_status
 
         # Only include live_data when present (new measurement)
         if live_data is not None and live_data:  # Non-empty dict
             state["live_data"] = live_data
 
-        # Only include USB state when present (mount/unmount event)
-        if usb_mounted is not None:
-            state["usb_mounted"] = usb_mounted
-
-        # Only include buzzer when changed
-        if buzzer_enabled is not None:
-            state["buzzer_enabled"] = buzzer_enabled
+        # Marker is embedded by device_status_service; no need to set here.
 
         return state

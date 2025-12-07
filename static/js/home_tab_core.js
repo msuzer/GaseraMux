@@ -200,8 +200,8 @@ function SSEHandler(d) {
     const enabledCount = d.enabled_count ?? 0;
     const repeatTotal = d.repeat_total ?? 0;
     const totalSteps = d.total_steps ?? 0;
-    const buzzer_enabled = d.buzzer_enabled ?? null;
-
+    const buzzer_enabled = window.DeviceStatus?.getBuzzerEnabled(d);
+    
     // Store for timer/display updates
     window.latestElapsedSeconds = d.elapsed_seconds ?? 0;
     window.latestTtSeconds = d.tt_seconds ?? 0;
@@ -247,8 +247,8 @@ function SSEHandler(d) {
     window.updateCycleProgress?.(pct, stepIndex, enabledCount);
     window.updateCircularProgress?.(overallPct);
 
-  // Subscribe to SSE updates and sync buzzer state from other clients
-    if (buzzer_enabled !== null && buzzerToggle.checked !== buzzer_enabled) {
+    // Sync buzzer state from other clients without flicker;
+    if (buzzer_enabled !== null && (buzzerToggle.checked !== buzzer_enabled)) {
       buzzerToggle.checked = buzzer_enabled;
     }
 

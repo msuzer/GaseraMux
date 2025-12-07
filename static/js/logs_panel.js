@@ -12,6 +12,8 @@ const TOAST_DELAY_MS = 2000;
 
 // Track previous USB state so we don't double-fire events
 window.lastUsbMounted = null;
+// Track last phase to act only on transitions to IDLE/ABORTED
+window.lastSSEPhase = typeof window.lastSSEPhase === "string" ? window.lastSSEPhase : null;
 
 // Debounce helper (simple trailing debounce)
 function debounce(fn, wait = 400) {
@@ -67,9 +69,11 @@ function onSSEUpdateEvent(event) {
 
   let refresh = false;
 
-  if (typeof event.usb_mounted === "boolean") {
-    if (window.lastUsbMounted !== null && event.usb_mounted !== window.lastUsbMounted) {
-      if (event.usb_mounted) {
+  const usbMounted = window.DeviceStatus?.getUsbMounted(event);
+
+  if (usbMounted !== null) {
+    if (window.lastUsbMounted !== null && usbMounted !== window.lastUsbMounted) {
+      if (usbMounted) {
         showUSBToast("USB drive mounted", "success");
       } else {
         showUSBToast("USB drive removed", "warning");
@@ -77,11 +81,17 @@ function onSSEUpdateEvent(event) {
       refresh = true;
     }
 
-    window.lastUsbMounted = event.usb_mounted;
+    window.lastUsbMounted = usbMounted;
   }
 
-  if (event.phase === window.PHASE.IDLE || event.phase === window.PHASE.ABORTED) {
-    refresh = true;
+  // Only refresh on phase transition into IDLE or ABORTED
+  if (typeof event.phase === "string") {
+    const phase = event.phase;
+    const transitionedToIdleLike = (phase === window.PHASE.IDLE || phase === window.PHASE.ABORTED) && phase !== window.lastSSEPhase;
+    if (transitionedToIdleLike) {
+      refresh = true;
+    }
+    window.lastSSEPhase = phase;
   }
 
   if (refresh) {
