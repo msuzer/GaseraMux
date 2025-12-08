@@ -28,12 +28,24 @@ const ChannelState = {
     
     jar.addEventListener("click", () => {
       if (window.isMeasurementRunning) return;
-      // Prevent toggling jars that were sampled in recent measurement
-      if (jar.classList.contains("sampled")) {
-        jar.classList.remove("sampled");  // Allow clearing sampled state by clicking
+      
+      if (jar.classList.contains("active")) {
+        jar.classList.remove("active");
+        if (jar.classList.contains("sampled")) {
+          jar.classList.remove("sampled");
+          jar.dataset.wasSampled = "true";
+        }
+      } else {
+        jar.classList.add("active");
+        if (jar.dataset.wasSampled === "true") {
+          jar.classList.add("sampled");
+          jar.dataset.wasSampled = "false";
+        }
       }
-      jar.classList.toggle("active");
-      jar.classList.remove("sampling");
+
+      if (jar.classList.contains("sampling")) {
+        jar.classList.remove("sampling");
+      }
     });
 
     jarGrid.appendChild(jar);
@@ -63,13 +75,15 @@ window.applyJarMask = function (mask = []) {
   jars.forEach((jar, i) => {
     const state = mask[i];
 
-    if (state === ChannelState.SAMPLED) {
-      jar.classList.add("active", "sampled");
-    } else if (state > ChannelState.INACTIVE) {
-      jar.classList.add("active");
-      jar.classList.remove("sampled");
-    } else {
+    if (state === ChannelState.INACTIVE)  {
       jar.classList.remove("active", "sampled");
+    } else {
+      jar.classList.add("active");
+      if (state === ChannelState.SAMPLED) {
+        jar.classList.add("sampled");
+      } else {
+        jar.classList.remove("sampled");
+      }
     }
   });
 };
