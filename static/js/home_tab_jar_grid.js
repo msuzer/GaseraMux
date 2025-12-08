@@ -40,13 +40,13 @@ window.setAllJars = function (state) {
 
 window.getJarMask = function () {
   return Array.from(document.querySelectorAll(".jar"))
-    .map(j => j.classList.contains("active"));
+    .map(j => j.classList.contains("active") ? 1 : 0);
 };
 
 window.applyJarMask = function (mask = []) {
   const jars = document.querySelectorAll(".jar");
   jars.forEach((jar, i) => {
-    jar.classList.toggle("active", !!mask[i]);
+    jar.classList.toggle("active", mask[i] > 0);
   });
 };
 

@@ -43,7 +43,7 @@ class TaskConfig:
     measure_seconds: int
     pause_seconds: int
     repeat_count: int
-    include_channels: list[bool] = field(default_factory=list)
+    include_channels: list[int] = field(default_factory=list)
 
 class Progress:
     def __init__(self):
@@ -141,11 +141,11 @@ class AcquisitionEngine:
             repeat_count=int(prefs.get(KEY_REPEAT_COUNT, 1)),
         )
 
-        include_mask = prefs.get(KEY_INCLUDE_CHANNELS, [True] * self.TOTAL_CHANNELS)
+        include_mask = prefs.get(KEY_INCLUDE_CHANNELS, [1] * self.TOTAL_CHANNELS)
         cfg.include_channels = list(include_mask)
         self.cfg = cfg
 
-        self.progress.enabled_count = sum(self.cfg.include_channels)
+        self.progress.enabled_count = sum(1 for s in self.cfg.include_channels if s > 0)
         if self.progress.enabled_count == 0:
             warn("[ENGINE] no channels enabled, skipping measurement")
             buzzer.play("invalid")
@@ -226,7 +226,7 @@ class AcquisitionEngine:
             if self._stop_event.is_set():
                 return False
 
-            if enabled:
+            if enabled > 0:
                 if not self._measure_channel():
                     return False
                 
@@ -366,7 +366,7 @@ class AcquisitionEngine:
         if not self.cfg:
             return 0.0
         
-        enabled_indices = [i for i, enabled in enumerate(self.cfg.include_channels) if enabled]
+        enabled_indices = [i for i, s in enumerate(self.cfg.include_channels) if s > 0]
         if not enabled_indices:
             return 0.0
 

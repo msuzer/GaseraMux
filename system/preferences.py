@@ -4,6 +4,12 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List
 from system.log_utils import debug, info, warn, error
 
+# Add after imports, before VALID_PREF_KEYS
+# --- Channel State Constants ---
+CHANNEL_STATE_INACTIVE = 0
+CHANNEL_STATE_ACTIVE = 1
+CHANNEL_STATE_SAMPLED = 2  # For Phase 2
+
 # --- Preference Keys ---
 VALID_PREF_KEYS = [
         "measurement_duration",
@@ -39,7 +45,7 @@ class Preferences:
 
         # Ensure include_channels mask exists
         if KEY_INCLUDE_CHANNELS not in self.data:
-            self.data[KEY_INCLUDE_CHANNELS] = [True] * self.DEFAULT_INCLUDE_COUNT
+            self.data[KEY_INCLUDE_CHANNELS] = [CHANNEL_STATE_ACTIVE] * self.DEFAULT_INCLUDE_COUNT
             self.save()
 
     # ------------------------------------------------------------------
