@@ -179,7 +179,7 @@ def update_preferences() -> tuple[Response, int]:
     if not data or not isinstance(data, dict):
         return jsonify({"ok": False, "error": "Invalid JSON body"}), 400
 
-    updated = prefs.update_from_dict(data)
+    updated = prefs.update_from_dict(data, write_disk=True)
     if not updated:
         return jsonify({"ok": False, "error": "No valid keys to update"}), 400
 
@@ -234,7 +234,7 @@ def set_buzzer_state() -> tuple[Response, int]:
             buzzer.enabled = enabled
 
         # Persist to preferences
-        prefs.update_from_dict({KEY_BUZZER_ENABLED: enabled})
+        prefs.update_from_dict({KEY_BUZZER_ENABLED: enabled}, write_disk=True)
         debug(f"[BUZZER] {'enabled' if enabled else 'disabled'} via POST")
         return jsonify({"ok": True, "enabled": enabled}), 200
 

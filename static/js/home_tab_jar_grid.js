@@ -6,6 +6,13 @@
 
 const TOTAL_JARS = 31;
 
+// Channel state constants (matches backend ChannelState)
+const ChannelState = {
+  INACTIVE: 0,
+  ACTIVE: 1,
+  SAMPLED: 2
+};
+
 // ============================================================
 // Jar Grid Creation
 // ============================================================
@@ -21,10 +28,14 @@ const TOTAL_JARS = 31;
     
     jar.addEventListener("click", () => {
       if (window.isMeasurementRunning) return;
+      // Prevent toggling jars that were sampled in recent measurement
+      if (jar.classList.contains("sampled")) {
+        jar.classList.remove("sampled");  // Allow clearing sampled state by clicking
+      }
       jar.classList.toggle("active");
-      jar.classList.remove("sampled", "sampling");
+      jar.classList.remove("sampling");
     });
-    
+
     jarGrid.appendChild(jar);
   }
 })();
@@ -38,15 +49,28 @@ window.setAllJars = function (state) {
   });
 };
 
+// Line 43-45, update getJarMask to return state 2 for sampled jars
 window.getJarMask = function () {
   return Array.from(document.querySelectorAll(".jar"))
-    .map(j => j.classList.contains("active") ? 1 : 0);
+    .map(j => {
+      if (j.classList.contains("sampled")) return ChannelState.SAMPLED;
+      return j.classList.contains("active") ? ChannelState.ACTIVE : ChannelState.INACTIVE;
+    });
 };
 
 window.applyJarMask = function (mask = []) {
   const jars = document.querySelectorAll(".jar");
   jars.forEach((jar, i) => {
-    jar.classList.toggle("active", mask[i] > 0);
+    const state = mask[i];
+
+    if (state === ChannelState.SAMPLED) {
+      jar.classList.add("active", "sampled");
+    } else if (state > ChannelState.INACTIVE) {
+      jar.classList.add("active");
+      jar.classList.remove("sampled");
+    } else {
+      jar.classList.remove("active", "sampled");
+    }
   });
 };
 

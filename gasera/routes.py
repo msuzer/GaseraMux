@@ -68,7 +68,7 @@ def gasera_api_gas_colors() -> tuple[Response, int]:
 def start_measurement() -> tuple[Response, int]:
     data = request.get_json(silent=True) or {}
     try:
-        prefs.update_from_dict(data)
+        prefs.update_from_dict(data, write_disk=True)
         started, msg = engine.start()
 
         return jsonify({"ok": started, "message": msg}), 200

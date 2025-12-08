@@ -22,7 +22,8 @@ from system.preferences import (
     KEY_PAUSE_SECONDS,
     KEY_REPEAT_COUNT,
     KEY_INCLUDE_CHANNELS,
-    KEY_ONLINE_MODE_ENABLED
+    KEY_ONLINE_MODE_ENABLED,
+    ChannelState
     )
 
 # Timing constants
@@ -141,11 +142,11 @@ class AcquisitionEngine:
             repeat_count=int(prefs.get(KEY_REPEAT_COUNT, 1)),
         )
 
-        include_mask = prefs.get(KEY_INCLUDE_CHANNELS, [1] * self.TOTAL_CHANNELS)
+        include_mask = prefs.get(KEY_INCLUDE_CHANNELS, [ChannelState.ACTIVE] * self.TOTAL_CHANNELS)
         cfg.include_channels = list(include_mask)
         self.cfg = cfg
 
-        self.progress.enabled_count = sum(1 for s in self.cfg.include_channels if s > 0)
+        self.progress.enabled_count = sum(1 for s in self.cfg.include_channels if s > ChannelState.INACTIVE)
         if self.progress.enabled_count == 0:
             warn("[ENGINE] no channels enabled, skipping measurement")
             buzzer.play("invalid")
@@ -260,6 +261,12 @@ class AcquisitionEngine:
         if not self._blocking_wait(self.cfg.measure_seconds, notify=True):
             warn("[ENGINE] Aborting: measurement interrupted")
             return False
+        
+        # Mark channel as sampled (memory only, no disk write)
+        vch = self.progress.current_channel
+        self.cfg.include_channels[vch] = ChannelState.SAMPLED
+        prefs.update_from_dict({KEY_INCLUDE_CHANNELS: self.cfg.include_channels}, write_disk=False)
+        debug(f"[ENGINE] Channel {vch} marked as sampled")
         
         return True
 

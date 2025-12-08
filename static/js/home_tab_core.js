@@ -125,6 +125,8 @@ function startMeasurement() {
   const currentCycle = parseInt(sessionStorage.getItem("measurementCycle") || "0", 10);
   sessionStorage.setItem("measurementCycle", (currentCycle + 1).toString());
 
+  window.resetJarStates?.();
+
   btnStart.textContent = "Starting…";
   btnStart.disabled = true;
   safeFetch(API_PATHS?.measurement?.start, {

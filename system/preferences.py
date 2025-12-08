@@ -4,11 +4,12 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List
 from system.log_utils import debug, info, warn, error
 
-# Add after imports, before VALID_PREF_KEYS
 # --- Channel State Constants ---
-CHANNEL_STATE_INACTIVE = 0
-CHANNEL_STATE_ACTIVE = 1
-CHANNEL_STATE_SAMPLED = 2  # For Phase 2
+class ChannelState:
+    """Channel state values for include_channels preference."""
+    INACTIVE = 0
+    ACTIVE = 1
+    SAMPLED = 2
 
 # --- Preference Keys ---
 VALID_PREF_KEYS = [
@@ -45,7 +46,7 @@ class Preferences:
 
         # Ensure include_channels mask exists
         if KEY_INCLUDE_CHANNELS not in self.data:
-            self.data[KEY_INCLUDE_CHANNELS] = [CHANNEL_STATE_ACTIVE] * self.DEFAULT_INCLUDE_COUNT
+            self.data[KEY_INCLUDE_CHANNELS] = [ChannelState.ACTIVE] * self.DEFAULT_INCLUDE_COUNT
             self.save()
 
     # ------------------------------------------------------------------
@@ -104,24 +105,32 @@ class Preferences:
     # Mutators
     # ------------------------------------------------------------------
 
-    def set(self, key: str, value: Any):
-        """Set and immediately persist a preference."""
-        self.data[key] = value
-        self.save()
-        self._notify(key, value)
-
-    def update_from_dict(self, d: Dict[str, Any]):
+    def update_from_dict(self, d: Dict[str, Any], write_disk: bool = False) -> List[str]:
+        """Update preferences from dictionary.
+        
+        Args:
+            d: Dictionary of key-value pairs to update
+            write_disk: If True, saves to disk. If False, updates memory only.
+        """
         updated = []
         for k, v in d.items():
-            # accept all known keys + include_channels list
-            debug(f"[PREFS] updating {k} = {v}")
-            if k in VALID_PREF_KEYS:
+            if k not in VALID_PREF_KEYS:
+                continue
+            
+            # Check if value actually changed before adding to updated list
+            if k not in self.data or self.data[k] != v:
                 self.data[k] = v
                 updated.append(k)
+            else:
+                debug(f"[PREFS] skipping {k}, value unchanged")
+        
         if updated:
-            self.save()
+            debug(f"[PREFS] updating keys: {updated}")
+            if write_disk:
+                self.save()
             for k in updated:
                 self._notify(k, self.data[k])
+        
         return updated
 
     # ------------------------------------------------------------------
@@ -143,7 +152,6 @@ class Preferences:
 
     def as_dict(self) -> Dict[str, Any]:
         return dict(self.data)
-
 
 # Singleton
 prefs = Preferences()
