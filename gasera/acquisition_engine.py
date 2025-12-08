@@ -239,7 +239,7 @@ class AcquisitionEngine:
             if is_last_enabled:
                 if is_final_repeat:
                     self._set_phase(Phase.SWITCHING)
-                    time.sleep(1.0)
+                    self._blocking_wait(1.0, notify=True)
                     debug("[ENGINE] final channel of final repeat - signaled completion")
                     break
                 debug("[ENGINE] all enabled channels processed for this repeat")
@@ -333,14 +333,20 @@ class AcquisitionEngine:
 
     def _blocking_wait(self, duration: float, notify: bool = True) -> bool:
         end_time = time.monotonic() + duration
-        interval = 0.5 if duration < 10 else 1.0
-        while time.monotonic() < end_time:
+        base_interval = 0.5 if duration < 10 else 1.0
+        while True:
             if self._stop_event.is_set():
                 return False
+            now = time.monotonic()
+            remaining = end_time - now
+            if remaining <= 0:
+                break
             if notify:
                 self._update_common_progress()
                 self._notify()
-            time.sleep(interval)
+            # Sleep no longer than base_interval and never longer than remaining
+            sleep_time = min(base_interval, remaining)
+            time.sleep(sleep_time)
         return True
 
     def _stop_measurement(self) -> bool:

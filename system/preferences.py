@@ -38,8 +38,8 @@ class Preferences:
         self._load()
 
         # Ensure include_channels mask exists
-        if "include_channels" not in self.data:
-            self.data["include_channels"] = [True] * self.DEFAULT_INCLUDE_COUNT
+        if KEY_INCLUDE_CHANNELS not in self.data:
+            self.data[KEY_INCLUDE_CHANNELS] = [True] * self.DEFAULT_INCLUDE_COUNT
             self.save()
 
     # ------------------------------------------------------------------

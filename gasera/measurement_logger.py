@@ -3,9 +3,7 @@ import os
 import csv
 import uuid
 from datetime import datetime
-
 from system.log_utils import debug, info, warn
-
 
 class MeasurementLogger:
     """
@@ -30,7 +28,6 @@ class MeasurementLogger:
         self.f = open(self.filename, "w", newline="")
         self.writer = csv.writer(self.f, delimiter='\t')
 
-        # internal state
         self.header_written = False
         self.component_headers = []    # populated after first measurement
 
@@ -96,22 +93,25 @@ class MeasurementLogger:
 
         # Build the row
         # Phase/channel/repeat: prefer live, fallback to progress snapshot
+        phase_text = str(live.get("phase", ""))
+        # Pad phase for consistent visual alignment when viewing TSV in plain text
+        phase_padded = phase_text.ljust(10)
         row = [
             ts,
-            live.get("phase"),          # frontend and backend both send these
+            phase_padded,                # padded to fixed width for readability
             live.get("channel"),
             live.get("repeat"),
         ]
 
         # Add gas values in the header-defined order
-        # Normalize ppm to float when possible
-        def _num(v):
+        # Normalize ppm and format consistently to fixed precision (improves visual alignment)
+        def _fmt_ppm(v):
             try:
-                return float(v)
+                return f"{float(v):.4f}"
             except Exception:
                 return ""
 
-        values_by_label = {c.get("label"): _num(c.get("ppm")) for c in comps if c and c.get("label") is not None}
+        values_by_label = {c.get("label"): _fmt_ppm(c.get("ppm")) for c in comps if c and c.get("label") is not None}
 
         for label in self.component_headers:
             row.append(values_by_label.get(label, ""))
