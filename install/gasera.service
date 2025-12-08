@@ -1,6 +1,7 @@
 [Unit]
 Description=Gasera Flask API
 After=network.target
+Wants=network.target
 
 [Service]
 User=www-data

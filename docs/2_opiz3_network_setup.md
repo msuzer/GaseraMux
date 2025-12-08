@@ -22,6 +22,19 @@ nmcli dev wifi connect "SSID1" password "password1" ifname wlan0
 nmcli dev wifi connect "SSID2" password "password2" ifname wlan0
 ```
 
+**Configure automatic reconnection (recommended):**
+
+After connecting, configure the connection for auto-reconnect with unlimited retries:
+
+```bash
+# Replace "SSID1" with your actual WiFi name
+sudo nmcli connection modify "SSID1" connection.autoconnect yes
+sudo nmcli connection modify "SSID1" connection.autoconnect-retries 0
+sudo nmcli connection modify "SSID1" ipv4.may-fail no
+```
+
+This ensures the device reconnects automatically when the router comes back online.
+
 **Add Wi-Fi without being in range:**
 
 ```bash
