@@ -51,6 +51,53 @@ fi
 echo "🚀 Deploying GaseraMux (branch: $BRANCH)..."
 
 # --------------------------------------------------------------
+# 0. Check if desktop environment is disabled
+# --------------------------------------------------------------
+echo "[0/10] Checking desktop environment status..."
+
+# Check if display manager or desktop session is enabled
+DESKTOP_ENABLED=false
+if systemctl is-enabled lightdm.service >/dev/null 2>&1 || \
+   systemctl is-enabled gdm.service >/dev/null 2>&1 || \
+   systemctl is-enabled sddm.service >/dev/null 2>&1 || \
+   systemctl is-active lightdm.service >/dev/null 2>&1 || \
+   systemctl is-active gdm.service >/dev/null 2>&1 || \
+   systemctl is-active sddm.service >/dev/null 2>&1; then
+  DESKTOP_ENABLED=true
+fi
+
+if [ "$DESKTOP_ENABLED" = true ]; then
+  echo
+  echo "⚠️  WARNING: Desktop environment is currently enabled!"
+  echo "   Running a desktop environment consumes significant resources and is not needed"
+  echo "   for this headless application. It's recommended to disable it."
+  echo
+  read -r -p "Would you like to disable the desktop environment now? [y/N] " ans_desktop
+  
+  if [[ "${ans_desktop:-}" =~ ^[Yy]$ ]]; then
+    echo "🔧 Disabling desktop environment..."
+    
+    # Stop and disable display managers
+    for dm in lightdm gdm sddm; do
+      if systemctl is-active "$dm.service" >/dev/null 2>&1; then
+        systemctl stop "$dm.service" || true
+      fi
+      if systemctl is-enabled "$dm.service" >/dev/null 2>&1; then
+        systemctl disable "$dm.service" || true
+      fi
+    done
+    
+    echo "✅ Desktop environment disabled. A reboot is recommended after deployment."
+    echo "   You can re-enable it later with: sudo systemctl enable lightdm.service"
+  else
+    echo "ℹ️  Continuing with desktop environment enabled."
+    echo "   Note: You can disable it manually later using orangepi-config."
+  fi
+else
+  echo "✅ Desktop environment is disabled (good for performance)."
+fi
+
+# --------------------------------------------------------------
 # 1. Install required packages
 # --------------------------------------------------------------
 echo "[1/10] Update & install packages..."
@@ -119,6 +166,30 @@ echo "✅ Permissions normalized for GaseraMux."
 # 4b. GPIO + I2C udev rules + permissions
 # --------------------------------------------------------------
 echo "[4b/10] GPIO + I2C udev + permissions..."
+
+# Enable I2C3 overlay for Orange Pi
+echo "🔧 Enabling I2C3 overlay..."
+BOOT_ENV_FILE="/boot/orangepiEnv.txt"
+
+if [ -f "$BOOT_ENV_FILE" ]; then
+  # Check if overlays line exists
+  if grep -q "^overlays=" "$BOOT_ENV_FILE"; then
+    # Add ph-i2c3 if not already present
+    if ! grep -q "ph-i2c3" "$BOOT_ENV_FILE"; then
+      sed -i 's/^overlays=\(.*\)/overlays=\1 ph-i2c3/' "$BOOT_ENV_FILE"
+      echo "   → Added ph-i2c3 to overlays in $BOOT_ENV_FILE"
+    else
+      echo "   → ph-i2c3 already enabled in $BOOT_ENV_FILE"
+    fi
+  else
+    # Add new overlays line
+    echo "overlays=ph-i2c3" >> "$BOOT_ENV_FILE"
+    echo "   → Added overlays=ph-i2c3 to $BOOT_ENV_FILE"
+  fi
+else
+  echo "⚠️  Boot environment file not found. Please enable I2C3 manually via orangepi-config."
+fi
+
 cp "$APP_DIR/install/99-gpio.rules" /etc/udev/rules.d/99-gpio.rules
 # Ensure groups exist
 groupadd -f gpio
@@ -383,9 +454,7 @@ read -r -p "Run disk cleanup now (logs/caches/tmp)? [y/N] " ans_clean
 if [[ "${ans_clean:-}" =~ ^[Yy]$ ]]; then
   if [[ -x "$APP_DIR/install/sd_clean.sh" ]]; then
     echo
-    read -r -p "How many days of journal logs to keep? [default: 2] " keepd
-    keepd="${keepd:-2}"
-    "$APP_DIR/install/sd_clean.sh" --yes --keep-days "$keepd"
+    "$APP_DIR/install/sd_clean.sh"
   else
     echo "sd_clean.sh not found or not executable. Skipping cleanup."
   fi
@@ -438,3 +507,12 @@ else
 fi
 
 echo "🚀 Deployment finished."
+
+# Check if reboot is needed for I2C3
+if [ -n "$BOOT_ENV_FILE" ] && grep -q "ph-i2c3" "$BOOT_ENV_FILE" 2>/dev/null; then
+  if [ ! -e /dev/i2c-3 ]; then
+    echo
+    echo "⚠️  IMPORTANT: I2C3 overlay was enabled but requires a reboot to take effect."
+    echo "   Run: sudo reboot"
+  fi
+fi

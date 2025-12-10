@@ -5,9 +5,22 @@ DEVICE=${1:-/dev/sda}
 PART=${DEVICE}1
 LABEL="GASERADRIVE"
 MOUNT_POINT="/media/usb0"
+USER="www-data"
 
 echo "=== USB FORMAT + AUTO-MOUNT SETUP ==="
+echo
+echo "Available devices:"
+lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,VENDOR,MODEL | grep -E "disk|NAME"
+echo
 echo "Device: $DEVICE"
+
+# Check if device exists
+if [ ! -b "$DEVICE" ]; then
+    echo "ERROR: Device $DEVICE does not exist!"
+    echo "Please specify the correct device as argument: $0 /dev/sdX"
+    exit 1
+fi
+
 read -p "WARNING: This will erase $DEVICE. Continue? (yes/no): " yn
 if [[ "$yn" != "yes" ]]; then
     echo "Aborted."
@@ -40,10 +53,11 @@ sudo mount $PART $MOUNT_POINT
 
 echo ">>> Step 8: Creating logs folder"
 sudo mkdir -p $MOUNT_POINT/logs
-sudo chown -R orangepi:orangepi $MOUNT_POINT/logs
+sudo chown -R $USER:$USER $MOUNT_POINT/logs
+sudo chmod -R 775 $MOUNT_POINT/logs
 
 echo ">>> Step 9: Adding /etc/fstab entry (safe, no boot failures)"
-FSTAB_ENTRY="LABEL=$LABEL   $MOUNT_POINT   ext4   defaults,noatime,nofail,x-systemd.automount   0   0"
+FSTAB_ENTRY="LABEL=$LABEL   $MOUNT_POINT   ext4   sync,noatime,nofail,x-systemd.automount   0   0"
 
 # Remove any existing entry for this label or mount point
 sudo sed -i "\|LABEL=$LABEL|d" /etc/fstab
