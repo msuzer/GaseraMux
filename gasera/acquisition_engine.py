@@ -109,6 +109,15 @@ class AcquisitionEngine:
             # Apply SONL (save-on-device) preference
             self._apply_online_mode_preference()
 
+            # Check Gasera status, must be IDLE to start
+            status = gasera.get_device_status()
+            status_str = status.status_str if status else "No Response"
+            debug(f"[ENGINE] Gasera device status: {status_str}")
+            if "IDLE" not in status_str.upper():
+                warn(f"[ENGINE] Gasera not idle: {status_str}")
+                buzzer.play("error")
+                return False, f"Gasera not idle: {status_str}"
+
             # Start Gasera measurement
             if not self._start_measurement():
                 error("[ENGINE] Failed to Start Gasera")
