@@ -1,0 +1,29 @@
+[Unit]
+Description=Gasera Simulator Service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/GaseraMux/sim
+ExecStart=/usr/bin/python3 cli.py
+Restart=on-failure
+
+# Security and file perms:
+# new files default to 640/750 instead of 666/777
+UMask=0027
+
+# prevent privilege escalation
+NoNewPrivileges=yes
+
+# give service its own /tmp
+PrivateTmp=yes
+
+# mount system dirs read-only
+ProtectSystem=full
+
+# hide /home from service
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

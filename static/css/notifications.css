@@ -1,0 +1,107 @@
+/* ==========================================================
+   Notifications — Toast & Alert Components
+   ========================================================== */
+
+/* -------------------------------
+   Center Toast Alert
+   ------------------------------- */
+
+.center-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 1.2rem 2rem;
+  border-radius: 0.75rem;
+  font-size: 1.2rem;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  z-index: 3000;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  cursor: pointer;
+}
+
+.center-toast.success {
+  background-color: rgba(25, 135, 84, 0.95); /* green */
+}
+
+.center-toast.danger {
+  background-color: rgba(220, 53, 69, 0.95); /* red */
+}
+
+.center-toast.info {
+  background-color: rgba(13, 110, 253, 0.95); /* blue */
+}
+
+.center-toast.show {
+  opacity: 1;
+}
+
+.center-toast:hover {
+  filter: brightness(1.05);
+}
+
+.center-toast small {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-top: 0.5rem;
+}
+
+/* -------------------------------
+   USB Toast (Top-Right Corner)
+   ------------------------------- */
+
+.usb-toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.usb-toast {
+  min-width: 250px;
+  margin-bottom: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.25rem;
+  color: #fff;
+  background-color: #333;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
+  transform: translateX(20px);
+  transition: all 0.25s ease-in-out;
+  pointer-events: auto;
+}
+
+.usb-toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.usb-toast.hide {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.usb-toast-success {
+  background-color: var(--bs-success) !important;
+  color: #fff;
+}
+
+.usb-toast-warning {
+  background-color: var(--bs-warning) !important;
+  color: #000;
+}
+
+.usb-toast-danger {
+  background-color: var(--bs-danger) !important;
+  color: #fff;
+}
+
+.usb-toast-info {
+  background-color: var(--bs-info) !important;
+  color: #fff;
+}

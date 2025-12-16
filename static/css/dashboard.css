@@ -1,0 +1,380 @@
+/* ==========================================================
+   Dashboard — Circular Progress & Info Circles
+   ========================================================== */
+
+/* -------------------------------
+   1. Common Wrappers & SVG Rings
+   ------------------------------- */
+
+.circle-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.circular-chart {
+  width: 110px;
+  height: 110px;
+  transform: rotate(-90deg);
+  position: relative;
+}
+
+.text-layer {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.circle-bg {
+  fill: none;
+  stroke: #eee;
+  stroke-width: 3.8;
+}
+
+.circle {
+  fill: none;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  transition: stroke 0.4s ease, stroke-dasharray 0.4s ease;
+}
+
+/* Color themes for circular progress rings */
+.circular-chart.blue .circle  { stroke: #0d6efd; }
+.circular-chart.green .circle { stroke: #198754; }
+
+.percentage {
+  fill: #212529;
+  font-weight: 700;
+  font-size: 0.6em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Dynamic arc colors */
+.circle[data-pct="0-25"]  { stroke: #dc3545; } /* red */
+.circle[data-pct="26-50"] { stroke: #fd7e14; } /* orange */
+.circle[data-pct="51-75"] { stroke: #ffc107; } /* yellow */
+.circle[data-pct="76-100"]{ stroke: #198754; } /* green */
+
+/* -------------------------------
+   2. Info Circles (Channel / Repeat)
+   ------------------------------- */
+
+.info-circle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f2f4f6 70%, #e9ecef 100%);
+  box-shadow:
+    inset 0 3px 8px rgba(255,255,255,0.6),
+    0 4px 8px rgba(0,0,0,0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.3s ease,
+    background-color 0.4s ease,
+    color 0.3s ease;
+}
+
+.info-circle:hover {
+  transform: scale(1.05);
+  box-shadow:
+    inset 0 4px 10px rgba(255,255,255,0.6),
+    0 6px 12px rgba(0,0,0,0.1);
+}
+
+.info-circle .value {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: inherit;
+}
+
+/* -------------------------------
+   Channel Card — Phase-Colored with Transitions
+   ------------------------------- */
+
+.channel-info {
+  color: #0d6efd;
+  transition:
+    color 0.4s ease,
+    box-shadow 0.4s ease,
+    background-color 0.4s ease,
+    transform 0.2s ease;
+}
+
+.channel-info .value {
+  font-size: 3rem;
+  transition: color 0.4s ease;
+}
+
+/* Phase glow states with subtle fade-in/out */
+.channel-info[data-phase="MEASURING"] {
+  box-shadow:
+    0 0 16px 4px rgba(255, 193, 7, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #ffc107; /* bright yellow */
+}
+
+.channel-info[data-phase="PAUSED"] {
+  box-shadow:
+    0 0 14px 3px rgba(13, 110, 253, 0.35),
+    inset 0 2px 6px rgba(255, 255, 255, 0.5);
+  color: #0d6efd; /* blue */
+}
+
+.channel-info[data-phase="IDLE"] {
+  box-shadow:
+    0 0 16px 4px rgba(181, 137, 51, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #b58933; /* amber */
+}
+
+.channel-info[data-phase="ABORTED"] {
+  box-shadow:
+    0 0 16px 4px rgba(220, 53, 69, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #dc3545; /* red */
+}
+
+.channel-info[data-phase="SWITCHING"] {
+  animation: switching-pulse 0.8s ease-in-out infinite;
+  box-shadow:
+    0 0 16px 4px rgba(13, 110, 253, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #0d6efd; /* bright bootstrap blue */
+}
+
+@keyframes switching-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 8px 2px rgba(13, 110, 253, 0.2),
+      inset 0 2px 6px rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 18px 5px rgba(13, 110, 253, 0.55),
+      inset 0 3px 8px rgba(255, 255, 255, 0.6);
+  }
+}
+
+.channel-info[data-phase="HOMING"] {
+  animation: homing-pulse 0.8s ease-in-out infinite;
+  box-shadow:
+    0 0 16px 4px rgba(111, 66, 193, 0.45),
+    inset 0 3px 8px rgba(255, 255, 255, 0.5);
+  color: #6f42c1; /* purple */
+}
+
+@keyframes homing-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 8px 2px rgba(111, 66, 193, 0.2),
+      inset 0 2px 6px rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 18px 5px rgba(111, 66, 193, 0.55),
+      inset 0 3px 8px rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* -------------------------------
+   Start Button — Phase-Based Colors
+   ------------------------------- */
+
+#btnStart {
+  transition:
+    background-color 0.6s ease-in-out,
+    border-color 0.6s ease-in-out,
+    color 0.6s ease-in-out,
+    box-shadow 0.6s ease-in-out,
+    transform 0.2s ease;
+}
+
+#btnStart[data-phase="MEASURING"] {
+  background-color: #ffc107;
+  border-color: #ffc107;
+  color: #000;
+}
+
+#btnStart[data-phase="MEASURING"]:hover {
+  background-color: #ffca2c;
+  border-color: #ffca2c;
+}
+
+#btnStart[data-phase="PAUSED"] {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+}
+
+#btnStart[data-phase="PAUSED"]:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+}
+
+#btnStart[data-phase="SWITCHING"] {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+  animation: btn-switching-pulse 0.8s ease-in-out infinite;
+}
+
+#btnStart[data-phase="SWITCHING"]:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+}
+
+#btnStart[data-phase="HOMING"] {
+  background-color: #6f42c1;
+  border-color: #6f42c1;
+  color: #fff;
+  animation: btn-homing-pulse 0.8s ease-in-out infinite;
+}
+
+#btnStart[data-phase="HOMING"]:hover {
+  background-color: #5a32a3;
+  border-color: #4e2a8e;
+}
+
+@keyframes btn-homing-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(111, 66, 193, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(111, 66, 193, 0.5);
+  }
+}
+
+@keyframes btn-switching-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(13, 110, 253, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(13, 110, 253, 0.5);
+  }
+}
+
+/* -------------------------------
+   Repeat Card — Continuous Color
+   ------------------------------- */
+
+.repeat-info {
+  --repeat-hue: 217;          /* base blue hue (switch to 150 for green) */
+  --repeat-lightness: 95%;    /* will darken from JS */
+  background: hsl(var(--repeat-hue), 60%, var(--repeat-lightness));
+  color: hsl(var(--repeat-hue), 25%, 25%);
+  font-size: 2.2rem;
+}
+
+.repeat-info.glow {
+  box-shadow: 0 0 12px 4px rgba(13, 110, 253, 0.35),
+              inset 0 3px 8px rgba(255,255,255,0.5);
+}
+
+.circular-chart.repeat .circle {
+  stroke: #dc3545; /* Bootstrap red */
+}
+
+/* -------------------------------
+   3. Card Styles
+   ------------------------------- */
+
+.card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 1rem;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-title {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+/* -------------------------------
+   4. Responsive Layout
+   ------------------------------- */
+
+@media (max-width: 767.98px) {
+  .info-circle {
+    width: 90px;
+    height: 90px;
+  }
+
+  .info-circle .value {
+    font-size: 1.6rem;
+  }
+
+  .card-title {
+    font-size: 0.8rem;
+  }
+}
+
+/* Responsive config layout */
+.config-row .inputs-group .input-block { min-width:160px; flex:1 1 0; }
+.config-row .inputs-group .input-block input { width:100%; }
+@media (min-width: 992px) { /* wider screens allow more stretch */
+  .config-row .inputs-group { flex:1 1 auto; }
+  .config-row .toggles-group { min-width:180px; }
+  .config-row .toggles-group .toggle-pill { width:100%; }
+}
+@media (min-width: 768px) {
+  .config-row .inputs-group { border-right: 1px solid rgba(0,0,0,0.06); padding-right:1.25rem; }
+}
+@media (max-width: 767.98px) {
+  .config-row .inputs-group, .config-row .toggles-group { width:100%; }
+  .config-row .inputs-group { border-right:none; padding-right:0; }
+}
+
+/* -------------------------------
+   5. Chart Canvas
+   ------------------------------- */
+
+canvas#liveChart {
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* -------------------------------
+   6. Toggle Pills (Buzzer / Online Mode)
+   ------------------------------- */
+/* Toggle pills applied directly to form-switch wrapper */
+.toggle-pill.form-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.9rem 0.35rem 0.75rem;
+  background: linear-gradient(145deg,#f9fafb,#f1f3f5);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 1.75rem;
+  transition: background-color .18s ease, box-shadow .18s ease;
+}
+.toggle-pill.form-switch:hover {
+  background: linear-gradient(145deg,#f7f9fa,#e9ecef);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+}
+.toggle-pill .form-check-input {
+  cursor: pointer;
+  margin-left: 0;
+}
+.toggle-pill .form-check-label {
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 2px; /* slight vertical alignment tweak */
+  user-select: none;
+}
+
+@media (max-width: 575.98px) {
+  .toggle-pill.form-switch {
+    flex: 1 1 45%;
+    justify-content: center;
+    min-width: 140px;
+  }
+}

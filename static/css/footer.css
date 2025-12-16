@@ -1,0 +1,53 @@
+/* ==========================================================
+   Footer — Status Bar
+   ========================================================== */
+
+.status-footer {
+  background: #f8f9fa;
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  position: sticky;
+  bottom: 0;
+  z-index: 1030;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.status-footer i {
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.status-footer.online {
+  background: #e9f7ef;
+  color: #198754;
+  border-color: rgba(25, 135, 84, 0.25);
+}
+
+.status-footer.offline {
+  background: #f8d7da;
+  color: #dc3545;
+  border-color: rgba(220, 53, 69, 0.25);
+}
+
+/* Heartbeat animation on update */
+@keyframes heartbeat {
+  0% { transform: scale(1);   opacity: 1; }
+  30%{ transform: scale(1.18);opacity: 1; }
+  60%{ transform: scale(1.04);opacity: .95; }
+  100%{ transform: scale(1);  opacity: 1; }
+}
+
+.status-footer .beat {
+  animation: heartbeat 0.7s ease-out;
+}
+
+/* Mobile stacking */
+@media (max-width: 767.98px) {
+  .status-footer {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.25rem;
+  }
+}

@@ -1,0 +1,12 @@
+# Sudoers rules for GaseraMux web user
+# Managed by install/deploy.sh; do not edit in place
+
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart gasera.service
+www-data ALL=(root) NOPASSWD: /usr/bin/umount
+www-data ALL=(root) NOPASSWD: /usr/bin/sync
+www-data ALL=(root) NOPASSWD: /usr/sbin/shutdown -r now
+www-data ALL=(root) NOPASSWD: /usr/sbin/shutdown -h now
+www-data ALL=(root) NOPASSWD: /usr/bin/nmcli connection up *
+www-data ALL=(root) NOPASSWD: /usr/bin/nmcli connection delete *
+www-data ALL=(root) NOPASSWD: /usr/bin/nmcli device wifi connect *
+www-data ALL=(root) NOPASSWD: /usr/bin/nmcli device wifi rescan *
