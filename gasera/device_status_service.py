@@ -79,13 +79,13 @@ def update_all_device_status() -> None:
 
     _update_connection_and_usb(conn_online, usb_mounted)
 
-    try:
-        gasera_status = gasera.get_compound_status()
-    except Exception:
-        gasera_status = {"error": True}
+#    try:
+#        gasera_status = gasera.get_compound_status()
+#    except Exception:
+#        gasera_status = {"error": True}
 
-    with _lock:
-        _latest_device_status["gasera"] = gasera_status
+#    with _lock:
+#        _latest_device_status["gasera"] = gasera_status
 
 def _on_buzzer_change(key: str, value: Any) -> None:
     """Callback for preference changes to track buzzer state updates."""

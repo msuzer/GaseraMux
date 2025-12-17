@@ -183,22 +183,6 @@ function startGaseraSSE() {
 // ---------------------------------------------------------------------
 // Footer status
 // ---------------------------------------------------------------------
-window.updateFooterStatus = function (isOnline) {
-    const footer = document.querySelector(".status-footer");
-    const icon = document.getElementById("connIcon");
-    const text = document.getElementById("connStatus");
-    if (!footer || !icon || !text) return;
-    if (isOnline) {
-        footer.classList.add("online"); footer.classList.remove("offline");
-        icon.className = "bi bi-wifi";
-        text.textContent = "Gasera Online";
-    } else {
-        footer.classList.add("offline"); footer.classList.remove("online");
-        icon.className = "bi bi-wifi-off";
-        text.textContent = "Gasera Offline";
-    }
-};
-
 window.updateFooterStatus = function (isOnline, gaseraStatus = null) {
     const footer = document.querySelector(".status-footer");
     const icon = document.getElementById("connIcon");
