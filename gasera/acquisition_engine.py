@@ -361,15 +361,15 @@ class AcquisitionEngine:
                 return False
             
             # 🔴 Gasera runtime status guard
-            gasera_status = get_latest_gasera_status()
-            if gasera_status:
-                code = gasera_status.get("status_code")
-                if code in (1, 2, 4):  # Init error or Malfunction
-                    error(f"[ENGINE] Gasera error during run: "
-                        f"{gasera_status.get('status')} (code={code})")
-                    self._stop_event.set()
-                    return False
-
+#            gasera_status = get_latest_gasera_status()
+#            if gasera_status:
+#                code = gasera_status.get("status_code")
+#                if code in (1, 4):  # Init error or Malfunction
+#                    error(f"[ENGINE] Gasera error during run: "
+#                        f"{gasera_status.get('status')} (code={code})")
+#                    self._stop_event.set()
+#                    return False
+    
             now = time.monotonic()
             remaining = end_time - now
             if remaining <= 0:
