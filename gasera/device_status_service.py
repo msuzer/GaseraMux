@@ -1,124 +1,151 @@
 from __future__ import annotations
+
 import threading
 import time
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 
-from system.log_utils import info, warn, debug
-from gasera.controller import gasera
+from system.log_utils import debug, warn
 from system.preferences import prefs, KEY_BUZZER_ENABLED
+from gasera.controller import gasera
 from .storage_utils import check_usb_change
 
-# Device state snapshots (low-frequency changes)
-latest_connection: Dict[str, Any] = {"online": False}
-latest_usb_mounted: bool = False
-_buzzer_change_pending: bool | None = None
+"""
+Device Status Service (refactored)
+--------------------------------
+Single source of truth for *low-frequency* device state snapshots used by:
+- SSE payloads
+- AcquisitionEngine runtime guards
 
-# Compound device status snapshot (for SSE payloads)
+Design principles:
+- Gasera is polled in exactly ONE place (this module)
+- Polling is rate-limited and independent of SSE clients
+- All consumers read cached snapshots (no direct protocol calls)
+"""
+
+# -----------------------------------------------------------------------------
+# Internal state
+# -----------------------------------------------------------------------------
+
 _latest_device_status: Dict[str, Any] = {
     "connection": {"online": False},
     "usb": {"mounted": False},
     "buzzer": {"enabled": False},
-    "gasera": {}          # 👈 NEW
+    "gasera": {},
 }
+
+_latest_usb_mounted: bool = False
+_buzzer_change_pending: bool | None = None
 
 _lock = threading.Lock()
 
+# Polling control
+_DEVICE_POLL_INTERVAL = 2.0  # seconds
+_poller_thread: threading.Thread | None = None
+
+# -----------------------------------------------------------------------------
+# Public snapshot accessors
+# -----------------------------------------------------------------------------
 
 def get_device_snapshots() -> Dict[str, Any]:
     """
-    Get compound device status snapshot.
-    If there is a pending buzzer change, include a per-payload marker under buzzer as `_changed: true`.
-    Caller should clear via `clear_buzzer_change()` after successfully sending a payload that includes this marker.
+    Return a coherent snapshot of device status for SSE.
+    This function NEVER talks to hardware or network.
     """
     with _lock:
-        _latest_device_status["connection"] = latest_connection.copy()
-        _latest_device_status["usb"] = {"mounted": latest_usb_mounted}
-        buz_enabled = bool(prefs.get(KEY_BUZZER_ENABLED, False))
-        buz = {"enabled": buz_enabled}
+        # Derive connection status purely from Gasera snapshot
+        online = _latest_device_status.get("gasera", {}).get("online", False)
+        _latest_device_status["connection"] = {"online": online}
+
+        # USB
+        _latest_device_status["usb"] = {"mounted": _latest_usb_mounted}
+
+        # Buzzer
+        enabled = bool(prefs.get(KEY_BUZZER_ENABLED, False))
+        buz = {"enabled": enabled}
         if _buzzer_change_pending is not None:
             buz["_changed"] = True
         _latest_device_status["buzzer"] = buz
 
         return _latest_device_status.copy()
 
+
 def get_latest_gasera_status() -> Dict[str, Any]:
-    """
-    Read-only accessor for the most recent Gasera compound status.
-    Safe for use by internal engine logic.
-    """
+    """Read-only accessor for cached Gasera compound status."""
     with _lock:
         return _latest_device_status.get("gasera", {}).copy()
 
+
 def clear_buzzer_change() -> None:
-    """Clear the buzzer change flag after it has been successfully sent."""
+    """Clear pending buzzer change flag after SSE send."""
     global _buzzer_change_pending
     with _lock:
         _buzzer_change_pending = None
 
-def _update_connection_and_usb(conn_online: bool, usb_mounted: bool) -> None:
-    """Internal: atomically update connection and USB status under a single lock."""
-    global latest_connection, latest_usb_mounted
-    with _lock:
-        latest_connection = {"online": conn_online}
-        latest_usb_mounted = usb_mounted
-        _latest_device_status["connection"] = latest_connection.copy()
-        _latest_device_status["usb"] = {"mounted": latest_usb_mounted}
+# -----------------------------------------------------------------------------
+# Internal update helpers
+# -----------------------------------------------------------------------------
 
-def update_gasera_status() -> None:
+def _update_usb_status() -> None:
+    global _latest_usb_mounted
     try:
-        gasera_status = gasera.get_compound_status()
+        mounted, _ = check_usb_change()
     except Exception:
-        gasera_status = {"error": True}
+        mounted = _latest_usb_mounted
 
     with _lock:
-        _latest_device_status["gasera"] = gasera_status
+        _latest_usb_mounted = mounted
 
-def update_all_device_status() -> None:
-    """
-    Update connection and USB in one cohesive step for consistent snapshots.
-    Called from SSE stream before fetching snapshots.
-    """
-    try:
-        conn_online = gasera.is_connected()
-    except Exception:
-        conn_online = False
-    try:
-        usb_mounted, _ = check_usb_change()
-    except Exception:
-        usb_mounted = latest_usb_mounted
 
-    _update_connection_and_usb(conn_online, usb_mounted)
+def _update_gasera_status() -> None:
+    try:
+        status = gasera.get_compound_status()
+    except Exception as e:
+        warn(f"[DEVICE] Gasera status poll failed: {e}")
+        status = {"online": False, "error": True}
+
+    # Ensure online flag is always present
+    if "online" not in status:
+        status = {"online": False, **status}
+
+    with _lock:
+        _latest_device_status["gasera"] = status
+
+# -----------------------------------------------------------------------------
+# Poller lifecycle
+# -----------------------------------------------------------------------------
+
+def start_device_status_poller() -> None:
+    """
+    Start background poller that periodically refreshes:
+    - USB mount state (cheap)
+    - Gasera compound status (TCP)
+    """
+    global _poller_thread
+    if _poller_thread and _poller_thread.is_alive():
+        return
+
+    def _loop():
+        while True:
+            _update_usb_status()
+            _update_gasera_status()
+            time.sleep(_DEVICE_POLL_INTERVAL)
+
+    _poller_thread = threading.Thread(
+        target=_loop,
+        name="DeviceStatusPoller",
+        daemon=True,
+    )
+    _poller_thread.start()
+
+# -----------------------------------------------------------------------------
+# Preference callbacks
+# -----------------------------------------------------------------------------
 
 def _on_buzzer_change(key: str, value: Any) -> None:
-    """Callback for preference changes to track buzzer state updates."""
     if key == KEY_BUZZER_ENABLED:
         global _buzzer_change_pending
         with _lock:
             _buzzer_change_pending = bool(value)
-            _latest_device_status["buzzer"] = {"enabled": bool(value)}
             debug(f"[DEVICE] Buzzer change detected: {value}")
 
-_GASERA_POLL_INTERVAL = 1.0  # seconds (safe default)
-_gasera_poll_thread = None
-
-def start_gasera_status_poller():
-    global _gasera_poll_thread
-    if _gasera_poll_thread and _gasera_poll_thread.is_alive():
-        return
-    
-    def _loop():
-        while True:
-            update_all_device_status()
-            time.sleep(_GASERA_POLL_INTERVAL)
-            update_gasera_status()
-            time.sleep(_GASERA_POLL_INTERVAL)
-
-    _gasera_poll_thread = threading.Thread(
-        target=_loop,
-        name="GaseraStatusPoller",
-        daemon=True,
-    )
-    _gasera_poll_thread.start()
-
-# Register callback for buzzer preference changes
 prefs.add_callback(_on_buzzer_change)

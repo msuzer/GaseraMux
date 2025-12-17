@@ -113,7 +113,7 @@ class AcquisitionEngine:
 
             # Check Gasera status, must be IDLE to start
             status = gasera.get_device_status()
-            if not status or status.error or status.status_code != 2:
+            if not status or status.error or status.status_code != 2: # 2 = IDLE
                 reason = status.status_str if status else "No response"
                 warn(f"[ENGINE] Gasera not idle (code={getattr(status,'status_code',None)}): {reason}")
                 buzzer.play("error")
@@ -354,7 +354,7 @@ class AcquisitionEngine:
         while True:
             if self._stop_event.is_set():
                 return False
-                
+
             now = time.monotonic()
             remaining = end_time - now
             if remaining <= 0:

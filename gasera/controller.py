@@ -92,21 +92,26 @@ class GaseraController:
     
     def get_compound_status(self) -> Dict[str, Any]:
         """
-        Returns normalized Gasera status for frontend:
-        - Always includes ASTS (device status)
-        - Includes AMST (measurement phase) only if measuring
+        Returns normalized Gasera status:
+        - online: bool
+        - status/status_code when available
+        - phase when measuring
         """
-        result: Dict[str, Any] = {}
+        try:
+            dev_status = self.get_device_status()
+        except Exception:
+            return {"online": False, "error": True}
 
-        dev_status = self.get_device_status()
         if not dev_status or dev_status.error:
-            return {"error": True}
+            return {"online": False, "error": True}
 
-        result["status"] = dev_status.status_str
-        result["status_code"] = dev_status.status_code
+        result: Dict[str, Any] = {
+            "online": True,
+            "status": dev_status.status_str,
+            "status_code": dev_status.status_code,
+        }
 
-        # 5 == Measuring (from status_map)
-        if dev_status.status_code == 5:
+        if dev_status.status_code == 5: # 5 == Measuring
             meas_status = self.get_measurement_status()
             if meas_status and not meas_status.error:
                 result["phase"] = meas_status.description
