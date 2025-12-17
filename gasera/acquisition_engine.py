@@ -119,11 +119,11 @@ class AcquisitionEngine:
                 buzzer.play("error")
                 return False, f"Gasera not idle: {reason}"
             
-            errors = gasera.get_active_errors()
-            if errors and not errors.error and errors.codes:
-                warn(f"[ENGINE] Gasera has active errors: {errors.codes}")
-                buzzer.play("error")
-                return False, f"Gasera active errors: {', '.join(errors.codes)}"
+#            errors = gasera.get_active_errors()
+#            if errors and not errors.error and errors.codes:
+#                warn(f"[ENGINE] Gasera has active errors: {errors.codes}")
+#                buzzer.play("error")
+#                return False, f"Gasera active errors: {', '.join(errors.codes)}"
 
             # Start Gasera measurement
             if not self._start_measurement():
@@ -362,7 +362,6 @@ class AcquisitionEngine:
             
             # 🔴 Gasera runtime status guard
             gasera_status = get_latest_gasera_status()
-
             if gasera_status:
                 code = gasera_status.get("status_code")
                 if code in (1, 4):  # Init error or Malfunction
@@ -370,7 +369,7 @@ class AcquisitionEngine:
                         f"{gasera_status.get('status')} (code={code})")
                     self._stop_event.set()
                     return False
-    
+
             now = time.monotonic()
             remaining = end_time - now
             if remaining <= 0:
