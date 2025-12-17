@@ -65,8 +65,27 @@ def _normalize_perms_and_prefs():
         except Exception:
             pass
 
-def _restart_service():
-    """Restart the service but don't treat non-zero exit as fatal if service ends up active."""
+def _restart_service(reason: str = ""):
+    """
+    Restart gasera.service and ensure it comes back active.
+    This is the ONLY place service restarts are allowed.
+    """
+    info(f"Restarting gasera.service {reason}".strip())
+
+    # Local UX feedback (safe: happens before process dies)
+    try:
+        from buzzer.buzzer_facade import buzzer
+        from system.display import show_system_message
+        import time
+
+        buzzer.play("service_restart")
+        show_system_message(
+            ["SYSTEM", "Restarting Service...", "", time.strftime("%H:%M:%S")],
+            duration=2.0
+        )
+    except Exception as e:
+        warn(f"[version_manager] UX feedback failed: {e}")
+
     import subprocess
     proc = subprocess.run(["systemctl", "restart", SERVICE_NAME],
                           capture_output=True, text=True)
@@ -131,7 +150,7 @@ def checkout_commit(sha: str):
     # DO NOT call update.sh here: it hard-resets to origin/main (would undo checkout). :contentReference[oaicite:1]{index=1}
     _normalize_perms_and_prefs()
     _regen_version_info()
-    _restart_service()
+    _restart_service(f"after version checkout to {sha}")
 
     new_sha = current_full_sha()
     info(f"checkout completed sha={sha} now={new_sha}")
@@ -151,7 +170,7 @@ def rollback_previous():
 
     _normalize_perms_and_prefs()
     _regen_version_info()
-    _restart_service()
+    _restart_service("after version rollback")
 
     now = current_full_sha()
     info(f"rollback completed now={now}")

@@ -111,16 +111,6 @@ def version_checkout():
 
         result = checkout_commit(sha)
         response = jsonify({"status": "ok", **result})
-
-        # Do not restart if nothing changed
-        if not result.get("noop"):
-            import threading, os, time
-            def restart_service():
-                time.sleep(1)
-                os.system("sudo systemctl restart gasera.service")
-
-            threading.Thread(target=restart_service, daemon=True).start()
-
         return response
 
     except Exception as e:
@@ -137,15 +127,6 @@ def version_rollback():
 
         # Prepare and send response before restarting service
         response = jsonify({"status": "ok", **result})
-
-        import threading, os, time
-
-        def restart_service():
-            time.sleep(1.0)
-            os.system("sudo systemctl restart gasera.service")
-
-        threading.Thread(target=restart_service, daemon=True).start()
-
         return response
 
     except Exception as e:
