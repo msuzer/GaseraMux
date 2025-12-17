@@ -19,6 +19,8 @@ from gasera.device_status_service import (
     get_device_snapshots,
     update_all_device_status,
     clear_buzzer_change,
+    start_gasera_status_poller,
+    update_gasera_status
 )
 
 import time, json
@@ -44,6 +46,7 @@ trigger.start()
 # Initialize live status service and start updater
 live_init(engine)
 start_background_updater()
+start_gasera_status_poller()
 
 # ----------------------------------------------------------------------
 # Progress subscription
@@ -101,7 +104,6 @@ def sse_events() -> Response:
 
         while True:
             try:
-                update_all_device_status()
                 _progress, _live_data = get_live_snapshots()
                 _device_status = get_device_snapshots()
 

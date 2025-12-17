@@ -1,8 +1,9 @@
 from __future__ import annotations
 import threading
+import time
 from typing import Dict, Any, Tuple
 
-from system.log_utils import info, debug
+from system.log_utils import info, warn, debug
 from gasera.controller import gasera
 from system.preferences import prefs, KEY_BUZZER_ENABLED
 from .storage_utils import check_usb_change
@@ -63,6 +64,15 @@ def _update_connection_and_usb(conn_online: bool, usb_mounted: bool) -> None:
         _latest_device_status["connection"] = latest_connection.copy()
         _latest_device_status["usb"] = {"mounted": latest_usb_mounted}
 
+def update_gasera_status() -> None:
+    try:
+        gasera_status = gasera.get_compound_status()
+    except Exception:
+        gasera_status = {"error": True}
+
+    with _lock:
+        _latest_device_status["gasera"] = gasera_status
+
 def update_all_device_status() -> None:
     """
     Update connection and USB in one cohesive step for consistent snapshots.
@@ -79,14 +89,6 @@ def update_all_device_status() -> None:
 
     _update_connection_and_usb(conn_online, usb_mounted)
 
-#    try:
-#        gasera_status = gasera.get_compound_status()
-#    except Exception:
-#        gasera_status = {"error": True}
-
-#    with _lock:
-#        _latest_device_status["gasera"] = gasera_status
-
 def _on_buzzer_change(key: str, value: Any) -> None:
     """Callback for preference changes to track buzzer state updates."""
     if key == KEY_BUZZER_ENABLED:
@@ -95,6 +97,27 @@ def _on_buzzer_change(key: str, value: Any) -> None:
             _buzzer_change_pending = bool(value)
             _latest_device_status["buzzer"] = {"enabled": bool(value)}
             debug(f"[DEVICE] Buzzer change detected: {value}")
+
+_GASERA_POLL_INTERVAL = 1.0  # seconds (safe default)
+_gasera_poll_thread = None
+
+def start_gasera_status_poller():
+    global _gasera_poll_thread
+    if _gasera_poll_thread and _gasera_poll_thread.is_alive():
+        return
+    
+    def _loop():
+        update_all_device_status()
+        time.sleep(_GASERA_POLL_INTERVAL)
+        update_gasera_status()
+        time.sleep(_GASERA_POLL_INTERVAL)
+
+    _gasera_poll_thread = threading.Thread(
+        target=_loop,
+        name="GaseraStatusPoller",
+        daemon=True,
+    )
+    _gasera_poll_thread.start()
 
 # Register callback for buzzer preference changes
 prefs.add_callback(_on_buzzer_change)
