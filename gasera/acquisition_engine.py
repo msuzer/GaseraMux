@@ -93,7 +93,6 @@ class AcquisitionEngine:
     # ------------------------------------------------------------------
     # Public control
     # ------------------------------------------------------------------
-
     def start(self) -> tuple[bool, str]:
         with self._lock:
             if self.is_running():
@@ -110,6 +109,7 @@ class AcquisitionEngine:
             
             # Apply SONL (save-on-device) preference
             self._apply_online_mode_preference()
+            time.sleep(1.0)  # allow Gasera to process mode change
 
             # Check Gasera status, must be IDLE to start
             status = gasera.get_device_status()
@@ -118,12 +118,8 @@ class AcquisitionEngine:
                 warn(f"[ENGINE] Gasera not idle (code={getattr(status,'status_code',None)}): {reason}")
                 buzzer.play("error")
                 return False, f"Gasera not idle: {reason}"
-            
-#            errors = gasera.get_active_errors()
-#            if errors and not errors.error and errors.codes:
-#                warn(f"[ENGINE] Gasera has active errors: {errors.codes}")
-#                buzzer.play("error")
-#                return False, f"Gasera active errors: {', '.join(errors.codes)}"
+
+            time.sleep(1.0)  # brief pause before starting
 
             # Start Gasera measurement
             if not self._start_measurement():
@@ -199,7 +195,6 @@ class AcquisitionEngine:
     # ------------------------------------------------------------------
     # Internal main loop
     # ------------------------------------------------------------------
-
     def _run_loop(self):
         info(f"[ENGINE] start: measure={self.cfg.measure_seconds}s, pause={self.cfg.pause_seconds}s, "
             f"repeat={self.cfg.repeat_count}, enabled_channels={self.progress.enabled_count}/{self.TOTAL_CHANNELS}")
@@ -359,17 +354,7 @@ class AcquisitionEngine:
         while True:
             if self._stop_event.is_set():
                 return False
-            
-            # 🔴 Gasera runtime status guard
-#            gasera_status = get_latest_gasera_status()
-#            if gasera_status:
-#                code = gasera_status.get("status_code")
-#                if code in (1, 4):  # Init error or Malfunction
-#                    error(f"[ENGINE] Gasera error during run: "
-#                        f"{gasera_status.get('status')} (code={code})")
-#                    self._stop_event.set()
-#                    return False
-    
+                
             now = time.monotonic()
             remaining = end_time - now
             if remaining <= 0:

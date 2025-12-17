@@ -107,10 +107,11 @@ def start_gasera_status_poller():
         return
     
     def _loop():
-        update_all_device_status()
-        time.sleep(_GASERA_POLL_INTERVAL)
-        update_gasera_status()
-        time.sleep(_GASERA_POLL_INTERVAL)
+        while True:
+            update_all_device_status()
+            time.sleep(_GASERA_POLL_INTERVAL)
+            update_gasera_status()
+            time.sleep(_GASERA_POLL_INTERVAL)
 
     _gasera_poll_thread = threading.Thread(
         target=_loop,
