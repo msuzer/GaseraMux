@@ -18,7 +18,7 @@ if [ -n "${1:-}" ]; then
   BRANCH="$1"
 else
   if [ -d "$APP_DIR/.git" ]; then
-    BRANCH=$(runuser -u "$USER" -- git -C "$APP_DIR" rev-parse --abbrev-ref HEAD)
+    BRANCH=$(runuser -u "$USER" -- git -C "$APP_DIR" symbolic-ref --short HEAD 2>/dev/null || echo "main")
   else
     BRANCH="main"
   fi

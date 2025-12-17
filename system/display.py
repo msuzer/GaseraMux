@@ -8,6 +8,7 @@ from typing import Optional
 from gasera.controller import gasera # for connection check
 from .log_utils import debug, warn
 from .display_driver import DisplayDriver
+from gasera.device_status_service import get_latest_gasera_status
 
 display = DisplayDriver()
 
@@ -130,10 +131,12 @@ def get_wifi_ssid():
         return "Unknown"
 
 def get_gasera_status():
-    try:
-        return "Online" if gasera.is_connected() else "Offline"
-    except Exception:
-        return "Unknown"
+    gasera_status = get_latest_gasera_status()
+    if gasera_status:
+        online = gasera_status.get("online", False)
+        return "Online" if online else "Offline"
+    
+    return "Checking"
 
 # === Layouts ===
 def draw_idle():

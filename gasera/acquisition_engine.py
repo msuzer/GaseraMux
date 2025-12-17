@@ -162,12 +162,7 @@ class AcquisitionEngine:
             warn("[ENGINE] no channels enabled, skipping measurement")
             buzzer.play("invalid")
             return False, "No channels enabled"
-        
-        if not gasera.is_connected():
-            error("[ENGINE] Gasera not connected, cannot start measurement")
-            buzzer.play("error")
-            return False, "Gasera not connected"
-        
+                
         return True, "Configuration valid"
 
     def _apply_online_mode_preference(self):
@@ -272,6 +267,10 @@ class AcquisitionEngine:
             warn("[ENGINE] Aborting: measurement interrupted")
             return False
         
+        if self.check_gasera_stopped():
+            warn("[ENGINE] Aborting: Gasera stopped unexpectedly")
+            return False
+        
         # Mark channel as sampled (memory only, no disk write)
         vch = self.progress.current_channel
         self.cfg.include_channels[vch] = ChannelState.SAMPLED
@@ -354,7 +353,7 @@ class AcquisitionEngine:
         while True:
             if self._stop_event.is_set():
                 return False
-
+            
             now = time.monotonic()
             remaining = end_time - now
             if remaining <= 0:
@@ -376,6 +375,15 @@ class AcquisitionEngine:
         time.sleep(GASERA_CMD_SETTLE_TIME)
         return True
 
+    def check_gasera_stopped(self) -> bool:
+        gasera_status = get_latest_gasera_status()
+        if gasera_status:
+            code = gasera_status.get("status_code")
+            online = gasera_status.get("online", False)
+            if online and code in (1, 2, 4, 7):
+                return True
+        
+        return False
 
     # ------------------------------------------------------------------
     # Helpers
