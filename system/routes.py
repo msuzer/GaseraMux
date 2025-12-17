@@ -133,7 +133,6 @@ def version_rollback():
         warn(f"[VERSION] Rollback failed: {e}")
         return jsonify({"status": "error", "error": str(e)}), 400
 
-
 # ----------------------------------------------------------------------
 # GET current preferences
 # ----------------------------------------------------------------------
