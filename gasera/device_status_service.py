@@ -40,6 +40,14 @@ def get_device_snapshots() -> Dict[str, Any]:
 
         return _latest_device_status.copy()
 
+def get_latest_gasera_status() -> Dict[str, Any]:
+    """
+    Read-only accessor for the most recent Gasera compound status.
+    Safe for use by internal engine logic.
+    """
+    with _lock:
+        return _latest_device_status.get("gasera", {}).copy()
+
 def clear_buzzer_change() -> None:
     """Clear the buzzer change flag after it has been successfully sent."""
     global _buzzer_change_pending

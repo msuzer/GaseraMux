@@ -8,6 +8,8 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional, Callable
 
+from gasera.device_status_service import get_latest_gasera_status
+
 from .storage_utils import get_log_directory
 from system.log_utils import debug, info, warn, error
 from system.display import update_measurement_state, show_run_complete, MeasurementState
@@ -357,6 +359,18 @@ class AcquisitionEngine:
         while True:
             if self._stop_event.is_set():
                 return False
+            
+            # 🔴 Gasera runtime status guard
+            gasera_status = get_latest_gasera_status()
+
+            if gasera_status:
+                code = gasera_status.get("status_code")
+                if code in (1, 4):  # Init error or Malfunction
+                    error(f"[ENGINE] Gasera error during run: "
+                        f"{gasera_status.get('status')} (code={code})")
+                    self._stop_event.set()
+                    return False
+    
             now = time.monotonic()
             remaining = end_time - now
             if remaining <= 0:
