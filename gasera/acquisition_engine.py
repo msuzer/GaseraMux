@@ -111,16 +111,20 @@ class AcquisitionEngine:
 
             # Check Gasera status, must be IDLE to start
             status = gasera.get_device_status()
-            status_str = status.status_str if status else "No Response"
-            debug(f"[ENGINE] Gasera device status: {status_str}")
-            if "IDLE" not in status_str.upper():
-                warn(f"[ENGINE] Gasera not idle: {status_str}")
+            if not status or status.error or status.status_code != 2:
+                reason = status.status_str if status else "No response"
+                warn(f"[ENGINE] Gasera not idle (code={getattr(status,'status_code',None)}): {reason}")
                 buzzer.play("error")
-                return False, f"Gasera not idle: {status_str}"
+                return False, f"Gasera not idle: {reason}"
+            
+            errors = gasera.get_active_errors()
+            if errors and not errors.error and errors.codes:
+                warn(f"[ENGINE] Gasera has active errors: {errors.codes}")
+                buzzer.play("error")
+                return False, f"Gasera active errors: {', '.join(errors.codes)}"
 
             # Start Gasera measurement
             if not self._start_measurement():
-                error("[ENGINE] Failed to Start Gasera")
                 buzzer.play("error")
                 return False, "Failed to start Gasera"
             
@@ -340,9 +344,9 @@ class AcquisitionEngine:
         self._blocking_wait(SWITCHING_SETTLE_TIME, notify=True)
 
     def _start_measurement(self) -> bool:
-        resp = gasera.start_measurement(TaskIDs.DEFAULT)
-        if not resp:
-            error("[ENGINE] Gasera start_measurement failed")
+        ok, msg = gasera.start_measurement(TaskIDs.DEFAULT)
+        if not ok:
+            error(f"[ENGINE] Gasera start_measurement failed: {msg}")
             return False
         time.sleep(GASERA_CMD_SETTLE_TIME)
         return True
@@ -366,12 +370,14 @@ class AcquisitionEngine:
         return True
 
     def _stop_measurement(self) -> bool:
-        resp = gasera.stop_measurement()
-        if not resp:
-            error("[ENGINE] Gasera stop_measurement failed")
+        ok, msg = gasera.stop_measurement()
+        if not ok:
+            error(f"[ENGINE] Gasera stop_measurement failed: {msg}")
             return False
+
         time.sleep(GASERA_CMD_SETTLE_TIME)
         return True
+
 
     # ------------------------------------------------------------------
     # Helpers

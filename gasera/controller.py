@@ -123,20 +123,31 @@ class GaseraController:
         resp = tcp_client.send_command(cmd)
         return self.proto.parse_atsk(resp) if resp else None
 
-    def start_measurement(self, task_id: Optional[str] = None) -> Optional[str]:
+    def start_measurement(self, task_id: Optional[str] = None) -> tuple[bool, str]:
         """
         Start measurement by task ID using STAM protocol command.
-        Parameter is internal task id retrieved from ATSK (Ask Task List) response.
+        Returns:
+            (True, message)  on success
+            (False, error_message) on failure
         """
         if not task_id:
             task_id = TaskIDs.DEFAULT
 
         if task_id not in TaskIDs.all_ids():
-            return "[ERROR] Invalid task id (allowed: 7, 11, 12, 13)"
+            return False, "Invalid task id (allowed: 7, 11, 12, 13)"
 
         cmd = self.proto.start_measurement_by_id(task_id)
         resp = tcp_client.send_command(cmd)
-        return self.proto.parse_generic(resp, "STAM").as_string() if resp else "[ERROR] No response from device"
+
+        if not resp:
+            return False, "No response from Gasera device"
+
+        parsed = self.proto.parse_generic(resp, "STAM")
+
+        if parsed.error:
+            return False, "Gasera rejected start command (STAM error)"
+
+        return True, "Measurement started"
 
     def start_measurement_by_name(self, task_name: Optional[str] = None) -> Optional[str]:
         """
@@ -153,10 +164,26 @@ class GaseraController:
         resp = tcp_client.send_command(cmd)
         return self.proto.parse_generic(resp, "STAT").as_string() if resp else "[ERROR] No response from device"
 
-    def stop_measurement(self) -> Optional[str]:
+    def stop_measurement(self) -> tuple[bool, str]:
+        """
+        Stop measurement using STPM protocol command.
+        Returns:
+            (True, message) on success
+            (False, error_message) on failure
+        """
         cmd = self.proto.stop_measurement()
         resp = tcp_client.send_command(cmd)
-        return self.proto.parse_generic(resp, "STPM").as_string() if resp else None
+
+        if not resp:
+            return False, "No response from Gasera device"
+
+        parsed = self.proto.parse_generic(resp, "STPM")
+
+        if parsed.error:
+            return False, "Gasera rejected stop command (STPM error)"
+
+        return True, "Measurement stopped"
+
 
     def get_last_results(self) -> Optional[ACONResult]:
         cmd = self.proto.get_last_measurement_results()
