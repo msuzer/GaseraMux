@@ -17,6 +17,7 @@ _latest_device_status: Dict[str, Any] = {
     "connection": {"online": False},
     "usb": {"mounted": False},
     "buzzer": {"enabled": False},
+    "gasera": {}          # 👈 NEW
 }
 
 _lock = threading.Lock()
@@ -69,6 +70,14 @@ def update_all_device_status() -> None:
         usb_mounted = latest_usb_mounted
 
     _update_connection_and_usb(conn_online, usb_mounted)
+
+    try:
+        gasera_status = gasera.get_compound_status()
+    except Exception:
+        gasera_status = {"error": True}
+
+    with _lock:
+        _latest_device_status["gasera"] = gasera_status
 
 def _on_buzzer_change(key: str, value: Any) -> None:
     """Callback for preference changes to track buzzer state updates."""

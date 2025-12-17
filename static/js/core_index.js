@@ -199,6 +199,42 @@ window.updateFooterStatus = function (isOnline) {
     }
 };
 
+window.updateFooterStatus = function (isOnline, gaseraStatus = null) {
+    const footer = document.querySelector(".status-footer");
+    const icon = document.getElementById("connIcon");
+    const text = document.getElementById("connStatus");
+    if (!footer || !icon || !text) return;
+
+    if (!isOnline) {
+        footer.classList.add("offline");
+        footer.classList.remove("online");
+        icon.className = "bi bi-wifi-off";
+        text.textContent = "Gasera Offline";
+        return;
+    }
+
+    // ---- Online ----
+    footer.classList.add("online");
+    footer.classList.remove("offline");
+    icon.className = "bi bi-wifi";
+
+    let label = "Gasera Online";
+
+    if (gaseraStatus && gaseraStatus.status) {
+        label += ` · ${gaseraStatus.status}`;
+
+        if (
+            gaseraStatus.status_code === 5 &&   // Measuring
+            gaseraStatus.phase
+        ) {
+            label += ` / ${gaseraStatus.phase}`;
+        }
+    }
+
+    text.textContent = label;
+};
+
+
 function heartbeatFooter() {
     const icon = document.getElementById("connIcon");
     if (!icon) return;
@@ -294,11 +330,12 @@ window.lastConnOnline = typeof window.lastConnOnline === "boolean" ? window.last
 if (window.GaseraHub) {
     window.GaseraHub.subscribe(d => {
         const phase = d.phase || window.PHASE.IDLE;
-
         const online = window.DeviceStatus?.getConnectionOnline(d);
+        const gasera = d.device_status?.gasera || null;
+
         if (online !== null) {
-            if (window.lastConnOnline === null || window.lastConnOnline !== online) {
-                window.updateFooterStatus(online);
+            if (window.lastConnOnline === null || window.lastConnOnline !== online || gasera) {
+                window.updateFooterStatus(online, gasera);
                 heartbeatFooter();
                 window.lastConnOnline = online;
             }

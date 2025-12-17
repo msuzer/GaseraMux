@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 from .protocol import GaseraProtocol, DeviceStatus, ErrorList, TaskList, ACONResult, MeasurementStatus, DeviceName, IterationNumber, NetworkSettings, DateTimeResult
 from .protocol import DeviceInfo, SelfTestResult, TaskParameters, SystemParameters, SamplerParameters, ParameterValue
 from .gas_info import get_gas_name, get_color_for_cas, get_cas_details
@@ -89,6 +89,29 @@ class GaseraController:
                 tcp_client.on_status_change(result)
             return result
         return None
+    
+    def get_compound_status(self) -> Dict[str, Any]:
+        """
+        Returns normalized Gasera status for frontend:
+        - Always includes ASTS (device status)
+        - Includes AMST (measurement phase) only if measuring
+        """
+        result: Dict[str, Any] = {}
+
+        dev_status = self.get_device_status()
+        if not dev_status or dev_status.error:
+            return {"error": True}
+
+        result["status"] = dev_status.status_str
+        result["status_code"] = dev_status.status_code
+
+        # 5 == Measuring (from status_map)
+        if dev_status.status_code == 5:
+            meas_status = self.get_measurement_status()
+            if meas_status and not meas_status.error:
+                result["phase"] = meas_status.description
+
+        return result
 
     def get_active_errors(self) -> Optional[ErrorList]:
         cmd = self.proto.ask_active_errors()
