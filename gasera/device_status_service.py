@@ -95,20 +95,48 @@ def _update_usb_status() -> None:
     with _lock:
         _latest_usb_mounted = mounted
 
-
 def _update_gasera_status() -> None:
     try:
-        status = gasera.get_compound_status()
-    except Exception as e:
-        warn(f"[DEVICE] Gasera status poll failed: {e}")
-        status = {"online": False, "error": True}
+        dev_status = gasera.get_device_status()
+    except Exception:
+        with _lock:
+            _latest_device_status["gasera"] = {"online": False, "error": True}
+        return
 
-    # Ensure online flag is always present
-    if "online" not in status:
-        status = {"online": False, **status}
+    if not dev_status or dev_status.error:
+        with _lock:
+            _latest_device_status["gasera"] = {"online": False, "error": True}
+        return
+
+    status = {
+        "online": True,
+        "status": dev_status.status_str,
+        "status_code": dev_status.status_code,
+    }
 
     with _lock:
         _latest_device_status["gasera"] = status
+
+def _update_gasera_phase() -> None:
+    with _lock:
+        status = _latest_device_status.get("gasera", {}).copy()
+
+    online = status.get("online", False)
+    code = status.get("status_code")
+
+    if online and code == 5:
+        try:
+            meas_status = gasera.get_measurement_status()
+            phase = (
+                meas_status.description
+                if meas_status and not meas_status.error
+                else "unknown"
+            )
+        except Exception:
+            phase = "unknown"
+
+        with _lock:
+            _latest_device_status["gasera"]["phase"] = phase
 
 # -----------------------------------------------------------------------------
 # Poller lifecycle
@@ -128,6 +156,8 @@ def start_device_status_poller() -> None:
         while True:
             _update_usb_status()
             _update_gasera_status()
+            time.sleep(_DEVICE_POLL_INTERVAL)
+            _update_gasera_phase()
             time.sleep(_DEVICE_POLL_INTERVAL)
 
     _poller_thread = threading.Thread(

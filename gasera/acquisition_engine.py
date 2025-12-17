@@ -112,12 +112,10 @@ class AcquisitionEngine:
             time.sleep(1.0)  # allow Gasera to process mode change
 
             # Check Gasera status, must be IDLE to start
-            status = gasera.get_device_status()
-            if not status or status.error or status.status_code != 2: # 2 = IDLE
-                reason = status.status_str if status else "No response"
-                warn(f"[ENGINE] Gasera not idle (code={getattr(status,'status_code',None)}): {reason}")
+            if not self.check_gasera_idle():
+                warn(f"[ENGINE] Gasera not idle")
                 buzzer.play("error")
-                return False, f"Gasera not idle: {reason}"
+                return False, "Gasera not idle"
 
             time.sleep(1.0)  # brief pause before starting
 
@@ -381,6 +379,16 @@ class AcquisitionEngine:
             code = gasera_status.get("status_code")
             online = gasera_status.get("online", False)
             if online and code in (1, 2, 4, 7):
+                return True
+        
+        return False
+    
+    def check_gasera_idle(self) -> bool:
+        gasera_status = get_latest_gasera_status()
+        if gasera_status:
+            code = gasera_status.get("status_code")
+            online = gasera_status.get("online", False)
+            if online and code == 2:
                 return True
         
         return False

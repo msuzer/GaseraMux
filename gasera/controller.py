@@ -90,34 +90,6 @@ class GaseraController:
             return result
         return None
     
-    def get_compound_status(self) -> Dict[str, Any]:
-        """
-        Returns normalized Gasera status:
-        - online: bool
-        - status/status_code when available
-        - phase when measuring
-        """
-        try:
-            dev_status = self.get_device_status()
-        except Exception:
-            return {"online": False, "error": True}
-
-        if not dev_status or dev_status.error:
-            return {"online": False, "error": True}
-
-        result: Dict[str, Any] = {
-            "online": True,
-            "status": dev_status.status_str,
-            "status_code": dev_status.status_code,
-        }
-
-        if dev_status.status_code == 5: # 5 == Measuring
-            meas_status = self.get_measurement_status()
-            if meas_status and not meas_status.error:
-                result["phase"] = meas_status.description
-
-        return result
-
     def get_active_errors(self) -> Optional[ErrorList]:
         cmd = self.proto.ask_active_errors()
         resp = tcp_client.send_command(cmd)
