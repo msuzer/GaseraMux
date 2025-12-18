@@ -12,7 +12,8 @@ GATEWAY_IP="192.168.0.1"
 DNS1="8.8.8.8"
 POOL_START="192.168.0.101"
 POOL_END="192.168.0.200"
-GASERA_MAC="00:e0:4b:6e:82:c0"   # <-- set your device's MAC here (lowercase recommended)
+# GASERA_MAC="00:e0:4b:6e:82:c0"   # Gasera One @ Harran University
+GASERA_MAC="00:e0:4b:7f:e8:29" # Gasera One @ Erciyes University
 LEASE_IP="192.168.0.100"
 
 APP_STORE="https://github.com"
