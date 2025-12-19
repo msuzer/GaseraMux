@@ -14,7 +14,6 @@ from .storage_utils import get_log_directory
 from system.log_utils import debug, info, warn, error
 from system.display import update_measurement_state, show_run_complete, MeasurementState
 from system.preferences import prefs
-from gpio.pneumatic_mux import CascadedMux
 from gasera.controller import gasera, TaskIDs
 from buzzer.buzzer_facade import buzzer
 from gasera.measurement_logger import MeasurementLogger
@@ -116,8 +115,6 @@ class AcquisitionEngine:
                 warn(f"[ENGINE] Gasera not idle")
                 buzzer.play("error")
                 return False, "Gasera not idle"
-
-            time.sleep(1.0)  # brief pause before starting
 
             # Start Gasera measurement
             if not self._start_measurement():
@@ -282,11 +279,12 @@ class AcquisitionEngine:
         
         if was_enabled:
             buzzer.play("step")
-                
+
+        self.cmux.select_next()
+
         if not self._blocking_wait(SWITCHING_SETTLE_TIME, notify=True):
             return False
 
-        self.cmux.select_next()
         return True
 
     def _update_progress(self, rep: int, processed: int, overall_steps: int):

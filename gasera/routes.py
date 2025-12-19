@@ -2,7 +2,6 @@ from datetime import datetime
 from flask import Blueprint, jsonify, Response, stream_with_context, request
 from system.preferences import prefs
 from gasera.acquisition_engine import AcquisitionEngine
-from gpio.pneumatic_mux import build_default_cascaded_mux
 from gpio.pin_assignments import OC1_PIN, OC2_PIN, OC3_PIN, OC4_PIN, OC5_PIN
 from system.log_utils import verbose, debug, info, warn, error
 from gasera.trigger_monitor import TriggerMonitor
@@ -31,13 +30,54 @@ gasera_bp = Blueprint("gasera", __name__)
 # ----------------------------------------------------------------------
 # Singleton setup
 # ----------------------------------------------------------------------
-cmux = build_default_cascaded_mux(
-    mux1_home_pin=OC5_PIN,
-    mux1_next_pin=OC4_PIN,
-    mux2_home_pin=OC2_PIN,
-    mux2_next_pin=OC1_PIN,
+# from mux.mux_gpio import GPIOMux
+
+#gpio_mux1 = GPIOMux(
+#        home_pin=OC5_PIN,
+#        next_pin=OC4_PIN,
+#    )
+
+#gpio_mux2 = GPIOMux(
+#        home_pin=OC2_PIN,
+#        next_pin=OC1_PIN,
+#    )
+
+from mux.mux_vici_uma import ViciUMAMux
+
+# serial_port1 = "/dev/ttyUSB0"
+# serial_port2 = "/dev/ttyUSB1"
+
+# Using persistent symlinks for FTDI devices, at Erciyes University
+serial_port1 = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A90KFA3G-if00-port0"
+serial_port2 = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9C7BUGI-if00-port0"
+
+serial_mux1 = ViciUMAMux(serial_port1)
+serial_mux2 = ViciUMAMux(serial_port2)
+
+from mux.cascaded_mux import CascadedMux
+
+#cmux = CascadedMux(
+#    gpio_mux1,
+#    gpio_mux2,
+#)
+
+cmux = CascadedMux(
+    serial_mux1,
+    serial_mux2,
 )
+
+#from mux.mirrored_mux import MirroredMux
+
+#mux1 = MirroredMux(gpio_mux1, serial_mux1)
+#mux2 = MirroredMux(gpio_mux2, serial_mux2)
+
+#cmux = CascadedMux(
+#    mux1,
+#    mux2,
+#)
+
 engine = AcquisitionEngine(cmux)
+
 trigger = TriggerMonitor(engine)
 trigger.start()
 

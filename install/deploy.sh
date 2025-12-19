@@ -215,16 +215,21 @@ cp "$APP_DIR/install/99-gpio.rules" /etc/udev/rules.d/99-gpio.rules
 # Ensure groups exist
 groupadd -f gpio
 groupadd -f i2c
+groupadd -f dialout
 # Add Flask/web user to both groups
 usermod -aG gpio "$USER"
 usermod -aG i2c "$USER"
+usermod -aG dialout "$USER"
 
+# Reload udev rules
 udevadm control --reload-rules
 udevadm trigger
+
 # Adjust existing device nodes
 chown root:gpio /dev/gpiochip* 2>/dev/null || true
 chmod 660 /dev/gpiochip* 2>/dev/null || true
 
+# Adjust I2C device nodes
 chown root:i2c /dev/i2c-* 2>/dev/null || true
 chmod 660 /dev/i2c-* 2>/dev/null || true
 

@@ -1,0 +1,9 @@
+# mux/iface.py
+from typing import Protocol
+
+class MuxInterface(Protocol):
+    def home(self) -> int: ...
+    def select_next(self) -> int: ...
+
+    @property
+    def position(self) -> int: ...
